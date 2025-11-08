@@ -493,16 +493,20 @@ export function ScenarioComparison({
                         {getAggregatedValue('numSites', displayedScenarios)?.toFixed(0)}
                       </td>
                     )}
-                    {displayedScenarios.map((scenario) => (
-                      <td key={scenario.id} className="text-right p-2">
-                        {scenario.numSites}
-                        {currentData && (
-                          <div className={`text-xs ${getDifference(scenario.numSites, currentData.numSites).diff < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {getDifference(scenario.numSites, currentData.numSites).diff > 0 ? '+' : ''}{getDifference(scenario.numSites, currentData.numSites).percentage.toFixed(1)}%
-                          </div>
-                        )}
-                      </td>
-                    ))}
+                    {displayedScenarios.map((scenario, idx) => {
+                      const prevScenario = idx > 0 ? displayedScenarios[idx - 1] : null;
+                      const diff = prevScenario ? getDifference(scenario.numSites, prevScenario.numSites) : null;
+                      return (
+                        <td key={scenario.id} className="text-right p-2">
+                          {scenario.numSites}
+                          {diff && (
+                            <div className={`text-xs ${diff.diff < 0 ? 'text-green-600' : diff.diff > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              ({diff.diff > 0 ? '+' : ''}{diff.percentage.toFixed(1)}%)
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 )}
                 {kpiFilters.totalCost && (
@@ -518,16 +522,20 @@ export function ScenarioComparison({
                         ${getAggregatedValue('totalCost', displayedScenarios)?.toLocaleString()}
                       </td>
                     )}
-                    {displayedScenarios.map((scenario) => (
-                      <td key={scenario.id} className="text-right p-2">
-                        ${scenario.totalCost.toLocaleString()}
-                        {currentData && (
-                          <div className={`text-xs ${getDifference(scenario.totalCost, currentData.totalCost).diff < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {getDifference(scenario.totalCost, currentData.totalCost).diff > 0 ? '+' : ''}{getDifference(scenario.totalCost, currentData.totalCost).percentage.toFixed(1)}%
-                          </div>
-                        )}
-                      </td>
-                    ))}
+                    {displayedScenarios.map((scenario, idx) => {
+                      const prevScenario = idx > 0 ? displayedScenarios[idx - 1] : null;
+                      const diff = prevScenario ? getDifference(scenario.totalCost, prevScenario.totalCost) : null;
+                      return (
+                        <td key={scenario.id} className="text-right p-2">
+                          ${scenario.totalCost.toLocaleString()}
+                          {diff && (
+                            <div className={`text-xs ${diff.diff < 0 ? 'text-green-600' : diff.diff > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              ({diff.diff > 0 ? '+' : ''}{diff.percentage.toFixed(1)}%)
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 )}
                 {kpiFilters.transportationCost && (
@@ -543,16 +551,20 @@ export function ScenarioComparison({
                         ${getAggregatedValue('transportationCost', displayedScenarios)?.toLocaleString()}
                       </td>
                     )}
-                    {displayedScenarios.map((scenario) => (
-                      <td key={scenario.id} className="text-right p-2">
-                        ${scenario.transportationCost.toLocaleString()}
-                        {currentData && (
-                          <div className={`text-xs ${getDifference(scenario.transportationCost, currentData.transportationCost).diff < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {getDifference(scenario.transportationCost, currentData.transportationCost).diff > 0 ? '+' : ''}{getDifference(scenario.transportationCost, currentData.transportationCost).percentage.toFixed(1)}%
-                          </div>
-                        )}
-                      </td>
-                    ))}
+                    {displayedScenarios.map((scenario, idx) => {
+                      const prevScenario = idx > 0 ? displayedScenarios[idx - 1] : null;
+                      const diff = prevScenario ? getDifference(scenario.transportationCost, prevScenario.transportationCost) : null;
+                      return (
+                        <td key={scenario.id} className="text-right p-2">
+                          ${scenario.transportationCost.toLocaleString()}
+                          {diff && (
+                            <div className={`text-xs ${diff.diff < 0 ? 'text-green-600' : diff.diff > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              ({diff.diff > 0 ? '+' : ''}{diff.percentage.toFixed(1)}%)
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 )}
                 {kpiFilters.facilityCost && (
@@ -568,16 +580,20 @@ export function ScenarioComparison({
                         ${getAggregatedValue('facilityCost', displayedScenarios)?.toLocaleString()}
                       </td>
                     )}
-                    {displayedScenarios.map((scenario) => (
-                      <td key={scenario.id} className="text-right p-2">
-                        ${scenario.facilityCost.toLocaleString()}
-                        {currentData && (
-                          <div className={`text-xs ${getDifference(scenario.facilityCost, currentData.facilityCost).diff < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {getDifference(scenario.facilityCost, currentData.facilityCost).diff > 0 ? '+' : ''}{getDifference(scenario.facilityCost, currentData.facilityCost).percentage.toFixed(1)}%
-                          </div>
-                        )}
-                      </td>
-                    ))}
+                    {displayedScenarios.map((scenario, idx) => {
+                      const prevScenario = idx > 0 ? displayedScenarios[idx - 1] : null;
+                      const diff = prevScenario ? getDifference(scenario.facilityCost, prevScenario.facilityCost) : null;
+                      return (
+                        <td key={scenario.id} className="text-right p-2">
+                          ${scenario.facilityCost.toLocaleString()}
+                          {diff && (
+                            <div className={`text-xs ${diff.diff < 0 ? 'text-green-600' : diff.diff > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              ({diff.diff > 0 ? '+' : ''}{diff.percentage.toFixed(1)}%)
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 )}
                 {kpiFilters.avgDistance && (
@@ -593,16 +609,20 @@ export function ScenarioComparison({
                         {getAggregatedValue('avgDistance', displayedScenarios)?.toFixed(1)} {settings.distanceUnit}
                       </td>
                     )}
-                    {displayedScenarios.map((scenario) => (
-                      <td key={scenario.id} className="text-right p-2">
-                        {scenario.avgDistance.toFixed(1)} {scenario.settings.distanceUnit}
-                        {currentData && (
-                          <div className={`text-xs ${getDifference(scenario.avgDistance, currentData.avgDistance).diff < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {getDifference(scenario.avgDistance, currentData.avgDistance).diff > 0 ? '+' : ''}{getDifference(scenario.avgDistance, currentData.avgDistance).percentage.toFixed(1)}%
-                          </div>
-                        )}
-                      </td>
-                    ))}
+                    {displayedScenarios.map((scenario, idx) => {
+                      const prevScenario = idx > 0 ? displayedScenarios[idx - 1] : null;
+                      const diff = prevScenario ? getDifference(scenario.avgDistance, prevScenario.avgDistance) : null;
+                      return (
+                        <td key={scenario.id} className="text-right p-2">
+                          {scenario.avgDistance.toFixed(1)} {scenario.settings.distanceUnit}
+                          {diff && (
+                            <div className={`text-xs ${diff.diff < 0 ? 'text-green-600' : diff.diff > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              ({diff.diff > 0 ? '+' : ''}{diff.percentage.toFixed(1)}%)
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 )}
                 {kpiFilters.demandCoverage && (
@@ -618,16 +638,20 @@ export function ScenarioComparison({
                         {getAggregatedValue('demandCoverage', displayedScenarios)?.toFixed(1)}%
                       </td>
                     )}
-                    {displayedScenarios.map((scenario) => (
-                      <td key={scenario.id} className="text-right p-2">
-                        {scenario.demandCoverage.toFixed(1)}%
-                        {currentData && (
-                          <div className={`text-xs ${getDifference(scenario.demandCoverage, currentData.demandCoverage).diff > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {getDifference(scenario.demandCoverage, currentData.demandCoverage).diff > 0 ? '+' : ''}{getDifference(scenario.demandCoverage, currentData.demandCoverage).diff.toFixed(1)}pp
-                          </div>
-                        )}
-                      </td>
-                    ))}
+                    {displayedScenarios.map((scenario, idx) => {
+                      const prevScenario = idx > 0 ? displayedScenarios[idx - 1] : null;
+                      const diff = prevScenario ? getDifference(scenario.demandCoverage, prevScenario.demandCoverage) : null;
+                      return (
+                        <td key={scenario.id} className="text-right p-2">
+                          {scenario.demandCoverage.toFixed(1)}%
+                          {diff && (
+                            <div className={`text-xs ${diff.diff > 0 ? 'text-green-600' : diff.diff < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              ({diff.diff > 0 ? '+' : ''}{diff.diff.toFixed(1)}pp)
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 )}
                 {kpiFilters.costPerUnit && (
@@ -643,16 +667,20 @@ export function ScenarioComparison({
                         ${getAggregatedValue('costPerUnit', displayedScenarios)?.toFixed(2)}
                       </td>
                     )}
-                    {displayedScenarios.map((scenario) => (
-                      <td key={scenario.id} className="text-right p-2">
-                        ${scenario.costPerUnit.toFixed(2)}
-                        {currentData && (
-                          <div className={`text-xs ${getDifference(scenario.costPerUnit, currentData.costPerUnit).diff < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {getDifference(scenario.costPerUnit, currentData.costPerUnit).diff > 0 ? '+' : ''}{getDifference(scenario.costPerUnit, currentData.costPerUnit).percentage.toFixed(1)}%
-                          </div>
-                        )}
-                      </td>
-                    ))}
+                    {displayedScenarios.map((scenario, idx) => {
+                      const prevScenario = idx > 0 ? displayedScenarios[idx - 1] : null;
+                      const diff = prevScenario ? getDifference(scenario.costPerUnit, prevScenario.costPerUnit) : null;
+                      return (
+                        <td key={scenario.id} className="text-right p-2">
+                          ${scenario.costPerUnit.toFixed(2)}
+                          {diff && (
+                            <div className={`text-xs ${diff.diff < 0 ? 'text-green-600' : diff.diff > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              ({diff.diff > 0 ? '+' : ''}{diff.percentage.toFixed(1)}%)
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 )}
                 {kpiFilters.costPerCustomer && (
@@ -668,16 +696,20 @@ export function ScenarioComparison({
                         ${getAggregatedValue('costPerCustomer', displayedScenarios)?.toFixed(2)}
                       </td>
                     )}
-                    {displayedScenarios.map((scenario) => (
-                      <td key={scenario.id} className="text-right p-2">
-                        ${scenario.costPerCustomer.toFixed(2)}
-                        {currentData && (
-                          <div className={`text-xs ${getDifference(scenario.costPerCustomer, currentData.costPerCustomer).diff < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {getDifference(scenario.costPerCustomer, currentData.costPerCustomer).diff > 0 ? '+' : ''}{getDifference(scenario.costPerCustomer, currentData.costPerCustomer).percentage.toFixed(1)}%
-                          </div>
-                        )}
-                      </td>
-                    ))}
+                    {displayedScenarios.map((scenario, idx) => {
+                      const prevScenario = idx > 0 ? displayedScenarios[idx - 1] : null;
+                      const diff = prevScenario ? getDifference(scenario.costPerCustomer, prevScenario.costPerCustomer) : null;
+                      return (
+                        <td key={scenario.id} className="text-right p-2">
+                          ${scenario.costPerCustomer.toFixed(2)}
+                          {diff && (
+                            <div className={`text-xs ${diff.diff < 0 ? 'text-green-600' : diff.diff > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              ({diff.diff > 0 ? '+' : ''}{diff.percentage.toFixed(1)}%)
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 )}
               </tbody>
