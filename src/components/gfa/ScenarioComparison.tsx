@@ -105,7 +105,6 @@ export function ScenarioComparison({
         .select('id, name')
         .eq('project_id', projectId)
         .eq('module_type', 'gfa')
-        .eq('status', 'completed')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
