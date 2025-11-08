@@ -51,7 +51,7 @@ export function DataSupportPanel({ customers, products, dcs, settings, costBreak
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("data_support_messages")
         .select("*")
         .eq("scenario_id", currentScenario.id)
@@ -59,7 +59,7 @@ export function DataSupportPanel({ customers, products, dcs, settings, costBreak
 
       if (!error && data) {
         setMessages(
-          data.map((msg) => ({
+          data.map((msg: any) => ({
             role: msg.role as "user" | "assistant",
             content: msg.content,
           })),
@@ -110,7 +110,7 @@ export function DataSupportPanel({ customers, products, dcs, settings, costBreak
 
     try {
       // Save user message to database
-      const { error: saveUserError } = await supabase.from("data_support_messages").insert({
+      const { error: saveUserError } = await (supabase as any).from("data_support_messages").insert({
         scenario_id: currentScenario.id,
         role: "user",
         content: userMessage.content,
@@ -176,7 +176,7 @@ export function DataSupportPanel({ customers, products, dcs, settings, costBreak
       }
 
       // Save assistant message to database
-      await supabase.from("data_support_messages").insert({
+      await (supabase as any).from("data_support_messages").insert({
         scenario_id: currentScenario.id,
         role: "assistant",
         content: assistantMessage.content,
@@ -203,7 +203,7 @@ export function DataSupportPanel({ customers, products, dcs, settings, costBreak
 
     try {
       // Delete all messages for this scenario
-      const { error } = await supabase.from("data_support_messages").delete().eq("scenario_id", currentScenario.id);
+      const { error } = await (supabase as any).from("data_support_messages").delete().eq("scenario_id", currentScenario.id);
 
       if (error) throw error;
 
@@ -342,7 +342,7 @@ export function DataSupportPanel({ customers, products, dcs, settings, costBreak
 
     try {
       // Save user message to database
-      const { error: saveUserError } = await supabase.from("data_support_messages").insert({
+      const { error: saveUserError } = await (supabase as any).from("data_support_messages").insert({
         scenario_id: currentScenario.id,
         role: "user",
         content: userMessage.content,
@@ -407,7 +407,7 @@ export function DataSupportPanel({ customers, products, dcs, settings, costBreak
       }
 
       // Save assistant message to database
-      await supabase.from("data_support_messages").insert({
+      await (supabase as any).from("data_support_messages").insert({
         scenario_id: currentScenario.id,
         role: "assistant",
         content: assistantMessage.content,

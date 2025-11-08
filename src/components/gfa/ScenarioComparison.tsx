@@ -104,16 +104,17 @@ export function ScenarioComparison({
     if (!projectId) return;
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('scenarios')
-        .select('id, name')
+        .select('id, name, status')
         .eq('project_id', projectId)
         .eq('module_type', 'gfa')
-        .order('created_at', { ascending: false });
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false});
 
       if (error) throw error;
 
-      setAvailableScenarios(data || []);
+      setAvailableScenarios(data?.map((s: any) => ({ id: s.id, name: s.name })) || []);
     } catch (error) {
       console.error('Error loading available scenarios:', error);
     }
@@ -131,48 +132,76 @@ export function ScenarioComparison({
       const scenarioIds = Array.from(selectedScenarios);
       
       // Load scenario outputs for selected scenarios
-      const { data, error } = await supabase
+      const { data: outputsData, error: outputError } = await (supabase as any)
         .from('scenario_outputs')
         .select('scenario_id, output_data')
         .in('scenario_id', scenarioIds);
 
-      if (error) throw error;
+      if (outputError) throw outputError;
 
-      // Get scenario names
-      const { data: scenariosData } = await supabase
+      // Load scenario inputs to get customers and settings
+      const { data: inputsData, error: inputError } = await (supabase as any)
+        .from('scenario_inputs')
+        .select('scenario_id, input_data')
+        .in('scenario_id', scenarioIds);
+
+      if (inputError) throw inputError;
+
+      // Get scenario metadata
+      const { data: scenariosData } = await (supabase as any)
         .from('scenarios')
         .select('id, name, created_at')
         .in('id', scenarioIds);
 
-      const scenarioMap = new Map(scenariosData?.map(s => [s.id, s]) || []);
+      const scenarioMap = new Map(scenariosData?.map((s: any) => [s.id, s]) || []);
+      const inputMap = new Map(inputsData?.map((i: any) => [i.scenario_id, i.input_data]) || []);
+      const outputMap = new Map(outputsData?.map((o: any) => [o.scenario_id, o.output_data]) || []);
 
-      const loadedScenarios: SavedScenario[] = data?.map((output) => {
-        const outputData = output.output_data as any;
-        const scenario = scenarioMap.get(output.scenario_id);
+      const loadedScenarios: SavedScenario[] = scenarioIds.map((id) => {
+        const scenario = scenarioMap.get(id);
+        const inputData = inputMap.get(id) as any;
+        const outputData = outputMap.get(id) as any;
         
-        // Get data from output
-        const customers = outputData.customers || [];
+        if (!scenario || !inputData || !outputData) return null;
+        
+        // Get data from input and output
+        const customersData = inputData.customers || [];
         const dcs = outputData.dcs || [];
-        const scenarioSettings = outputData.settings || settings;
+        const scenarioSettings = inputData.settings || settings;
         
         // Calculate total demand
-        const totalDemand = customers.reduce((sum: number, c: any) => sum + (c.demand * (c.conversionFactor || 1)), 0);
+        const totalDemand = customersData.reduce((sum: number, c: any) => 
+          sum + (c.demand * (c.conversionFactor || 1)), 0
+        );
         
-        // Calculate transportation cost
+        // Calculate transportation cost and average distance
         let transportationCost = 0;
-        customers.forEach((customer: any) => {
-          const assignedDC = dcs.find((dc: any) =>
-            dc.assignedCustomers?.some((c: any) => c.id === customer.id)
-          );
-          if (assignedDC) {
-            const distance = getDistance(
-              customer.latitude,
-              customer.longitude,
-              assignedDC.latitude,
-              assignedDC.longitude
-            );
-            const customerDemand = customer.demand * (customer.conversionFactor || 1);
-            transportationCost += distance * customerDemand * (scenarioSettings.transportationCostPerMilePerUnit || 0);
+        let totalDistance = 0;
+        let customerCount = 0;
+        let coveredCustomers = 0;
+        
+        dcs.forEach((dc: any) => {
+          if (dc.assignedCustomers && dc.assignedCustomers.length > 0) {
+            dc.assignedCustomers.forEach((customer: any) => {
+              const distance = getDistance(
+                customer.latitude,
+                customer.longitude,
+                dc.latitude,
+                dc.longitude
+              );
+              
+              totalDistance += distance;
+              customerCount++;
+              
+              // Calculate transport cost: distance * demand * cost per unit
+              const customerDemand = customer.demand * (customer.conversionFactor || 1);
+              transportationCost += distance * customerDemand * (scenarioSettings.transportationCostPerMilePerUnit || 0);
+              
+              // Check coverage based on radius
+              if (distance <= coverageRadius) {
+                coveredCustomers++;
+              }
+            });
           }
         });
         
@@ -182,48 +211,28 @@ export function ScenarioComparison({
         // Total cost = transportation cost + facility cost
         const totalCost = transportationCost + facilityCost;
         
-        // Calculate average distance and demand coverage
-        let avgDistance = 0;
-        let coveredDemand = 0;
+        // Calculate average distance
+        const avgDistance = customerCount > 0 ? totalDistance / customerCount : 0;
         
-        if (customers.length > 0 && dcs.length > 0) {
-          let totalDistance = 0;
-          customers.forEach((customer: any) => {
-            const assignedDC = dcs.find((dc: any) =>
-              dc.assignedCustomers?.some((c: any) => c.id === customer.id)
-            );
-            if (assignedDC) {
-              const distance = getDistance(
-                customer.latitude,
-                customer.longitude,
-                assignedDC.latitude,
-                assignedDC.longitude
-              );
-              totalDistance += distance;
-              if (distance <= (scenarioSettings.maxRadius || 0)) {
-                coveredDemand += customer.demand * (customer.conversionFactor || 1);
-              }
-            }
-          });
-          avgDistance = totalDistance / customers.length;
-        }
+        // Calculate demand coverage based on custom radius
+        const demandCoverage = customersData.length > 0 ? (coveredCustomers / customersData.length) * 100 : 0;
 
         return {
-          id: output.scenario_id,
-          name: scenario?.name || 'Unnamed Scenario',
-          timestamp: scenario?.created_at || new Date().toISOString(),
+          id,
+          name: (scenario as any)?.name || 'Unnamed Scenario',
+          timestamp: (scenario as any)?.created_at || new Date().toISOString(),
           numSites: dcs.length || 0,
-          totalCost: totalCost,
-          transportationCost: transportationCost,
-          facilityCost: facilityCost,
-          avgDistance: avgDistance,
-          demandCoverage: totalDemand > 0 ? (coveredDemand / totalDemand) * 100 : 0,
-          customers: customers.length,
+          totalCost,
+          transportationCost,
+          facilityCost,
+          avgDistance,
+          demandCoverage,
+          customers: customersData.length,
           costPerUnit: totalDemand > 0 ? totalCost / totalDemand : 0,
-          costPerCustomer: customers.length > 0 ? totalCost / customers.length : 0,
+          costPerCustomer: customersData.length > 0 ? totalCost / customersData.length : 0,
           settings: scenarioSettings,
         };
-      }) || [];
+      }).filter(Boolean) as SavedScenario[];
 
       setScenarios(loadedScenarios);
     } catch (error) {
@@ -301,10 +310,10 @@ export function ScenarioComparison({
     return settings.distanceUnit === 'mile' ? distance * 0.621371 : distance;
   };
 
-  // Load scenarios when selection changes
+  // Load scenarios when selection changes or coverage radius changes
   useEffect(() => {
     loadScenarios();
-  }, [selectedScenarios]);
+  }, [selectedScenarios, coverageRadius]);
 
   const handleScenarioSelect = (scenarioIds: string[]) => {
     setSelectedScenarios(new Set(scenarioIds));

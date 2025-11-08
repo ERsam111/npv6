@@ -91,19 +91,19 @@ export default function ProjectManagement() {
     const details = await Promise.all(
       projects.map(async (project) => {
         // Fetch scenarios
-        const { data: scenarios } = await supabase
+        const { data: scenarios } = await (supabase as any)
           .from('scenarios')
           .select('id, name, description, status')
           .eq('project_id', project.id);
 
         // Fetch collaborators
-        const { data: collaborators } = await supabase
+        const { data: collaborators } = await (supabase as any)
           .from('project_collaborators')
           .select('id, user_id')
           .eq('project_id', project.id);
 
         // Fetch owner email from profiles
-        const { data: ownerProfile } = await supabase
+        const { data: ownerProfile } = await (supabase as any)
           .from('profiles')
           .select('email')
           .eq('id', project.user_id)
@@ -111,22 +111,22 @@ export default function ProjectManagement() {
 
         // Fetch collaborator emails
         const collaboratorsWithEmails = await Promise.all(
-          (collaborators || []).map(async (collab) => {
-            const { data: profile } = await supabase
+          (collaborators || []).map(async (collab: any) => {
+            const { data: profile } = await (supabase as any)
               .from('profiles')
               .select('email')
               .eq('id', collab.user_id)
               .single();
             return {
               ...collab,
-              email: profile?.email,
+              email: profile?.email || '',
             };
           })
         );
 
         return {
           ...project,
-          owner_email: ownerProfile?.email,
+          owner_email: ownerProfile?.email || '',
           scenarios: scenarios || [],
           collaborators: collaboratorsWithEmails,
           isOwner: project.user_id === user?.id,
@@ -146,7 +146,7 @@ export default function ProjectManagement() {
     setInviting(true);
     try {
       // Get user by email using secure function
-      const { data: userId, error: lookupError } = await supabase
+      const { data: userId, error: lookupError } = await (supabase as any)
         .rpc('get_user_id_by_email', { _email: inviteEmail.trim() });
 
       if (lookupError || !userId) {
@@ -156,7 +156,7 @@ export default function ProjectManagement() {
       }
 
       // Add collaborator
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('project_collaborators')
         .insert({
           project_id: projectId,
@@ -183,7 +183,7 @@ export default function ProjectManagement() {
   };
 
   const handleRemoveCollaborator = async (projectId: string, collaboratorId: string) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('project_collaborators')
       .delete()
       .eq('id', collaboratorId);
