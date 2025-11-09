@@ -1,204 +1,25 @@
-/**
- * Calculate Haversine distance between two geographic points
- * @param lat1 Latitude of point 1
- * @param lon1 Longitude of point 1
- * @param lat2 Latitude of point 2
- * @param lon2 Longitude of point 2
- * @returns Distance in kilometers
- */
-export function haversineDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
-  
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) *
-      Math.cos(toRadians(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
+// src/utils/geoCalculations.ts
+// Drop-in replacement: adds "open facility" cost and chooses the fewest sites that minimize total cost
+// Works with your existing GFA page that calls `optimizeWithConstraints(...)`
 
-function toRadians(degrees: number): number {
-  return degrees * (Math.PI / 180);
-}
+import type { Customer, DistributionCenter, OptimizationSettings, Product } from "@/types/gfa";
 
-export interface Customer {
-  id: string;
-  product: string;
-  name: string;
-  city: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-  demand: number;
-  unitOfMeasure: string;
-  conversionFactor: number;
-}
+type DistanceUnit = "km" | "mile" | "mi";
+type CostParams = {
+  transportationCostPerMilePerUnit: number; // cost per distance-unit per demand unit
+  facilityCost: number; // fixed opening cost per DC
+  distanceUnit: DistanceUnit; // "km" or "mile"
+  costUnit: string; // passthrough (e.g., "m3")
+};
 
-export interface Product {
-  name: string;
-  baseUnit: string;
-  conversionToStandard: number;
-  unitConversions: Array<{
-    id: string;
-    fromUnit: string;
-    toUnit: string;
-    factor: number;
-  }>;
-}
+type Constraints = {
+  maxRadius: number; // in distanceUnit
+  demandPercentage: number; // 0..100 (% of each customer's demand that must be covered)
+  dcCapacity: number; // 0 => unlimited; else capacity in same units as demand
+  capacityUnit: string;
+};
 
-export interface DistributionCenter {
-  id: string;
-  latitude: number;
-  longitude: number;
-  assignedCustomers: Customer[];
-  totalDemand: number;
-}
-
-/**
- * Calculate center of gravity for a set of customers
- */
-export function calculateCenterOfGravity(customers: Customer[]): {
-  latitude: number;
-  longitude: number;
-} {
-  if (customers.length === 0) {
-    return { latitude: 0, longitude: 0 };
-  }
-
-  const totalDemand = customers.reduce((sum, c) => sum + c.demand, 0);
-  
-  const weightedLat = customers.reduce(
-    (sum, c) => sum + c.latitude * c.demand,
-    0
-  );
-  const weightedLon = customers.reduce(
-    (sum, c) => sum + c.longitude * c.demand,
-    0
-  );
-
-  return {
-    latitude: weightedLat / totalDemand,
-    longitude: weightedLon / totalDemand,
-  };
-}
-
-/**
- * K-means clustering for DC optimization
- */
-export function kMeansOptimization(
-  customers: Customer[],
-  numDCs: number,
-  maxIterations: number = 100
-): DistributionCenter[] {
-  if (customers.length === 0 || numDCs <= 0) {
-    return [];
-  }
-
-  // Initialize DCs with random customers
-  let dcs: DistributionCenter[] = [];
-  const usedIndices = new Set<number>();
-  
-  for (let i = 0; i < Math.min(numDCs, customers.length); i++) {
-    let randomIndex: number;
-    do {
-      randomIndex = Math.floor(Math.random() * customers.length);
-    } while (usedIndices.has(randomIndex));
-    
-    usedIndices.add(randomIndex);
-    const customer = customers[randomIndex];
-    
-    dcs.push({
-      id: `site-${i + 1}`,
-      latitude: customer.latitude,
-      longitude: customer.longitude,
-      assignedCustomers: [],
-      totalDemand: 0,
-    });
-  }
-
-  // K-means iterations
-  for (let iteration = 0; iteration < maxIterations; iteration++) {
-    // Reset assignments
-    dcs.forEach(dc => {
-      dc.assignedCustomers = [];
-      dc.totalDemand = 0;
-    });
-
-    // Assign customers to nearest DC
-    customers.forEach(customer => {
-      let nearestDC = dcs[0];
-      let minDistance = haversineDistance(
-        customer.latitude,
-        customer.longitude,
-        nearestDC.latitude,
-        nearestDC.longitude
-      );
-
-      dcs.forEach(dc => {
-        const distance = haversineDistance(
-          customer.latitude,
-          customer.longitude,
-          dc.latitude,
-          dc.longitude
-        );
-        if (distance < minDistance) {
-          minDistance = distance;
-          nearestDC = dc;
-        }
-      });
-
-      nearestDC.assignedCustomers.push(customer);
-      // Convert customer demand to standard units (m3) for totalDemand calculation
-      nearestDC.totalDemand += customer.demand * customer.conversionFactor;
-    });
-
-    // Recalculate DC positions (center of gravity of assigned customers)
-    let converged = true;
-    dcs.forEach(dc => {
-      if (dc.assignedCustomers.length > 0) {
-        const newCenter = calculateCenterOfGravity(dc.assignedCustomers);
-        const movement = haversineDistance(
-          dc.latitude,
-          dc.longitude,
-          newCenter.latitude,
-          newCenter.longitude
-        );
-        
-        if (movement > 0.1) {
-          converged = false;
-        }
-        
-        dc.latitude = newCenter.latitude;
-        dc.longitude = newCenter.longitude;
-      }
-    });
-
-    if (converged) {
-      break;
-    }
-  }
-
-  return dcs;
-}
-
-export interface OptimizationConstraints {
-  maxRadius: number; // in kilometers
-  demandPercentage: number; // percentage of demand that must be within maxRadius (0-100)
-  dcCapacity: number; // maximum capacity in standard units (0 = unlimited)
-  capacityUnit?: string; // unit for display purposes
-}
-
-export interface OptimizationResult {
+type OptimizeResult = {
   dcs: DistributionCenter[];
   feasible: boolean;
   warnings: string[];
@@ -208,319 +29,380 @@ export interface OptimizationResult {
     facilityCost: number;
     numSites: number;
   };
+};
+
+const toRad = (v: number) => (v * Math.PI) / 180;
+
+// Haversine distance in KM
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-/**
- * Convert demand from one unit to another using product-specific conversions
- */
-export function convertDemand(
-  demand: number,
-  fromUnit: string,
-  toUnit: string,
-  product: Product | undefined
+function convertKmToUnit(km: number, unit: DistanceUnit): number {
+  if (unit === "km") return km;
+  if (unit === "mile" || unit === "mi") return km * 0.621371;
+  return km;
+}
+
+function distanceInUnit(
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number },
+  unit: DistanceUnit,
 ): number {
-  const normalizedFrom = fromUnit.toLowerCase().trim();
-  const normalizedTo = toUnit.toLowerCase().trim();
-  
-  // Same units - no conversion needed
-  if (normalizedFrom === normalizedTo) {
-    return demand;
-  }
-  
-  // Check for custom unit conversions first
-  if (product?.unitConversions && product.unitConversions.length > 0) {
-    // Direct conversion (from → to)
-    const directConv = product.unitConversions.find(
-      c => c.fromUnit.toLowerCase().trim() === normalizedFrom && 
-           c.toUnit.toLowerCase().trim() === normalizedTo
-    );
-    if (directConv) {
-      return demand * directConv.factor;
-    }
-    
-    // Reverse conversion (to → from, so we divide)
-    const reverseConv = product.unitConversions.find(
-      c => c.fromUnit.toLowerCase().trim() === normalizedTo && 
-           c.toUnit.toLowerCase().trim() === normalizedFrom
-    );
-    if (reverseConv) {
-      return demand / reverseConv.factor;
-    }
-  }
-  
-  // Fallback to system defaults
-  const fromFactor = getConversionFactor(fromUnit);
-  const toFactor = getConversionFactor(toUnit);
-  return (demand * fromFactor) / toFactor;
+  const km = haversineKm(a.latitude, a.longitude, b.latitude, b.longitude);
+  return convertKmToUnit(km, unit);
 }
 
-/**
- * Calculate total transportation cost for a given DC configuration
- */
-function calculateTransportationCost(
-  dcs: DistributionCenter[],
-  costPerDistancePerUnit: number,
-  distanceUnit: 'km' | 'mile',
-  costUnit: string,
-  products: Product[]
-): number {
-  let totalCost = 0;
-  
-  dcs.forEach(dc => {
-    dc.assignedCustomers.forEach(customer => {
-      const distance = haversineDistance(
-        customer.latitude,
-        customer.longitude,
-        dc.latitude,
-        dc.longitude
-      );
-      
-      // Convert distance to selected unit
-      const distanceInSelectedUnit = distanceUnit === 'mile' ? distance * 0.621371 : distance;
-      
-      // Find the product for this customer
-      const product = products.find(p => p.name === customer.product);
-      
-      // Convert customer demand to cost unit
-      const demandInCostUnit = convertDemand(
-        customer.demand,
-        customer.unitOfMeasure,
-        costUnit,
-        product
-      );
-      
-      // Cost = distance * demand (in cost units) * cost per distance per unit
-      totalCost += distanceInSelectedUnit * demandInCostUnit * costPerDistancePerUnit;
-    });
-  });
-  
-  return totalCost;
+// Extract "demand" for a customer; if none present, default to 1
+function getCustomerDemand(c: Customer): number {
+  // Common field names fallback
+  const v = (c as any).demand ?? (c as any).demandQty ?? (c as any).volume ?? (c as any).qty ?? 1;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : 1;
 }
 
-// Import conversion function from unitConversions
-import { getConversionFactor } from './unitConversions';
-
-/**
- * Optimize DC placement with cost minimization
- */
-export function optimizeWithCost(
+// Choose candidate DC locations.
+// Simple + effective: allow each customer location to be a candidate.
+// (If you later have a separate DC candidates table, swap in that dataset here.)
+function buildCandidates(
   customers: Customer[],
-  transportationCostPerDistancePerUnit: number,
-  facilityCost: number,
-  distanceUnit: 'km' | 'mile',
-  costUnit: string,
-  products: Product[]
-): OptimizationResult {
-  const warnings: string[] = [];
-  let bestDcs: DistributionCenter[] = [];
-  let bestTotalCost = Infinity;
-  let bestTransportationCost = 0;
-  let bestNumSites = 1;
-  
-  // Try different numbers of sites from 1 to customers.length (capped at 100 for performance)
-  const maxSites = Math.min(100, customers.length);
-  for (let numSites = 1; numSites <= maxSites; numSites++) {
-    const dcs = kMeansOptimization(customers, numSites);
-    const transportationCost = calculateTransportationCost(
-      dcs, 
-      transportationCostPerDistancePerUnit,
-      distanceUnit,
-      costUnit,
-      products
-    );
-    const totalFacilityCost = numSites * facilityCost;
-    const totalCost = transportationCost + totalFacilityCost;
-    
-    if (totalCost < bestTotalCost) {
-      bestTotalCost = totalCost;
-      bestDcs = dcs;
-      bestTransportationCost = transportationCost;
-      bestNumSites = numSites;
+): Array<{ id: string; latitude: number; longitude: number; name: string }> {
+  const uniq = new Map<string, { id: string; latitude: number; longitude: number; name: string }>();
+  customers.forEach((c, idx) => {
+    const key = `${Number(c.latitude)},${Number(c.longitude)}`;
+    if (!uniq.has(key)) {
+      uniq.set(key, {
+        id: `CAND_${uniq.size + 1}`,
+        latitude: Number(c.latitude),
+        longitude: Number(c.longitude),
+        name: (c as any).city || (c as any).name || `Site ${uniq.size + 1}`,
+      });
     }
-  }
-  
+  });
+  return Array.from(uniq.values());
+}
+
+function formatDC(id: string, lat: number, lng: number, name?: string): DistributionCenter {
   return {
-    dcs: bestDcs,
-    feasible: true,
-    warnings,
-    costBreakdown: {
-      totalCost: bestTotalCost,
-      transportationCost: bestTransportationCost,
-      facilityCost: bestNumSites * facilityCost,
-      numSites: bestNumSites,
-    },
+    id,
+    name: name ?? id,
+    latitude: lat,
+    longitude: lng,
+  } as unknown as DistributionCenter;
+}
+
+// Compute assignment given a set of open sites
+function assignCustomersToOpenSites(
+  customers: Customer[],
+  openSites: Array<{ id: string; latitude: number; longitude: number; name: string }>,
+  unit: DistanceUnit,
+  maxRadius: number,
+  demandPct: number,
+  dcCapacity: number,
+) {
+  // For capacity, we track remaining capacity per site (if dcCapacity > 0)
+  const capacityRem: Record<string, number> = {};
+  if (dcCapacity > 0) {
+    for (const s of openSites) capacityRem[s.id] = dcCapacity;
+  }
+
+  type Assign = { siteId: string | null; dist: number; served: number; unmet: number };
+  const assign: Record<string, Assign> = {};
+
+  let totalUnmet = 0;
+
+  for (const c of customers) {
+    const demand = getCustomerDemand(c);
+    const mustServe = (demandPct / 100) * demand;
+
+    // Find nearest open site within radius
+    let best: { id: string; dist: number } | null = null;
+    for (const s of openSites) {
+      const d = distanceInUnit(
+        { latitude: Number(c.latitude), longitude: Number(c.longitude) },
+        { latitude: s.latitude, longitude: s.longitude },
+        unit,
+      );
+      if (d <= maxRadius) {
+        if (!best || d < best.dist) best = { id: s.id, dist: d };
+      }
+    }
+
+    if (!best) {
+      // No site within radius → all "mustServe" is unmet
+      assign[c as any].unmet = mustServe;
+      assign[(c as any).id ?? JSON.stringify(c)] = {
+        siteId: null,
+        dist: Infinity,
+        served: 0,
+        unmet: mustServe,
+      };
+      totalUnmet += mustServe;
+      continue;
+    }
+
+    // Capacity check
+    let served = mustServe;
+    if (dcCapacity > 0) {
+      served = Math.min(served, Math.max(0, capacityRem[best.id] ?? 0));
+      capacityRem[best.id] = Math.max(0, (capacityRem[best.id] ?? 0) - served);
+    }
+
+    const unmet = Math.max(0, mustServe - served);
+    totalUnmet += unmet;
+
+    assign[(c as any).id ?? JSON.stringify(c)] = {
+      siteId: best.id,
+      dist: best.dist,
+      served,
+      unmet,
+    };
+  }
+
+  const feasible = totalUnmet < 1e-6; // treat tiny numeric residue as feasible
+  return { assignment: assign, feasible, totalUnmet };
+}
+
+// Cost function for a given open set
+function evaluateCost(
+  customers: Customer[],
+  openSites: Array<{ id: string; latitude: number; longitude: number; name: string }>,
+  unit: DistanceUnit,
+  maxRadius: number,
+  demandPct: number,
+  dcCapacity: number,
+  costParams: CostParams,
+) {
+  const { assignment, feasible } = assignCustomersToOpenSites(
+    customers,
+    openSites,
+    unit,
+    maxRadius,
+    demandPct,
+    dcCapacity,
+  );
+
+  // Transportation cost = sum(dist * served * rate)
+  let transportationCost = 0;
+  for (const c of customers) {
+    const key = (c as any).id ?? JSON.stringify(c);
+    const a = (assignment as any)[key] as { siteId: string | null; dist: number; served: number };
+    if (!a || !isFinite(a.dist) || a.served <= 0) continue;
+    const rate = costParams.transportationCostPerMilePerUnit;
+    transportationCost += a.dist * a.served * rate;
+  }
+
+  // Facility cost = facilityCost * number of open sites
+  const facilityCost = costParams.facilityCost * openSites.length;
+
+  // Tiny epsilon to prefer fewer sites even when costs tie
+  const epsilonPerSite = 1e-6;
+  const tieBreaker = epsilonPerSite * openSites.length;
+
+  const totalCost = transportationCost + facilityCost + tieBreaker;
+
+  return {
+    feasible,
+    totalCost,
+    transportationCost,
+    facilityCost,
   };
 }
 
-/**
- * Optimize DC placement with constraints
- */
+// Greedy + local improvement for Uncapacitated Facility Location (with option capacity)
+// 1) Start from the single best site, then keep adding sites that most reduce cost
+// 2) Try deletions and 1-for-1 swaps that reduce cost
 export function optimizeWithConstraints(
   customers: Customer[],
-  numDCs: number,
-  constraints: OptimizationConstraints,
-  mode: 'sites' | 'distance' | 'cost' = 'sites',
-  costParams?: {
-    transportationCostPerMilePerUnit: number;
-    facilityCost: number;
-    distanceUnit: 'km' | 'mile';
-    costUnit: string;
-  },
-  products?: Product[]
-): OptimizationResult {
+  numDCs: number, // still supported for "sites" mode; ignored for "cost" mode beyond being an upper cap if you want
+  constraints: Constraints,
+  mode: OptimizationSettings["mode"], // "sites" | "cost"
+  costParams?: CostParams,
+  _products?: Product[],
+): OptimizeResult {
   const warnings: string[] = [];
-  let dcs: DistributionCenter[];
 
-  // Calculate total demand to check feasibility
-  const totalDemand = customers.reduce((sum, c) => sum + (c.demand * c.conversionFactor), 0);
-  const hasCapacityConstraint = constraints.dcCapacity > 0;
+  if (!customers || customers.length === 0) {
+    return { dcs: [], feasible: false, warnings: ["No customers provided."] };
+  }
 
-  if (mode === 'cost') {
-    // Cost-based optimization
-    if (!costParams) {
-      throw new Error('Cost parameters required for cost-based optimization');
-    }
-    return optimizeWithCost(
-      customers,
-      costParams.transportationCostPerMilePerUnit,
-      costParams.facilityCost,
-      costParams.distanceUnit,
-      costParams.costUnit,
-      products || []
-    );
-  } else if (mode === 'distance') {
-    // Distance-based optimization: iteratively add sites until ALL constraints are met
-    let currentNumSites = 1;
-    let constraintViolations = Infinity;
-    const maxSites = customers.length; // No limit - add as many sites as needed
-    const targetDemandPercentage = constraints.demandPercentage || 100;
+  const unit: DistanceUnit = (constraints as any)?.distanceUnit ?? costParams?.distanceUnit ?? "km";
+  const maxRadius = constraints.maxRadius ?? 50;
+  const demandPct = constraints.demandPercentage ?? 100;
+  const dcCapacity = constraints.dcCapacity ?? 0; // 0 means unlimited
 
-    while (constraintViolations > 0 && currentNumSites <= maxSites) {
-      dcs = kMeansOptimization(customers, currentNumSites);
-      constraintViolations = 0;
-      let radiusViolations = 0;
-      let capacityViolations = 0;
+  const candidates = buildCandidates(customers);
+  if (candidates.length === 0) {
+    return { dcs: [], feasible: false, warnings: ["No candidate sites available."] };
+  }
 
-      // Check distance constraints based on demand percentage
-      dcs.forEach(dc => {
-        if (dc.totalDemand === 0) return;
-        
-        let demandWithinRadius = 0;
-        
-        dc.assignedCustomers.forEach(customer => {
-          const distance = haversineDistance(
-            customer.latitude,
-            customer.longitude,
-            dc.latitude,
-            dc.longitude
-          );
-          if (distance <= constraints.maxRadius) {
-            demandWithinRadius += customer.demand * customer.conversionFactor;
-          }
-        });
-        
-        const percentageWithinRadius = (demandWithinRadius / dc.totalDemand) * 100;
-        
-        if (percentageWithinRadius < targetDemandPercentage) {
-          radiusViolations++;
-          constraintViolations++;
-        }
-      });
+  // MODE A: "sites" → select exactly numDCs minimizing distance (classic p-median within radius)
+  // MODE B: "cost"  → opening cost active; choose number of sites endogenously
+  const isCostMode = mode === "cost";
+  const maxSites = isCostMode ? Math.min(candidates.length, 200) : Math.min(numDCs || 1, candidates.length);
 
-      // Check capacity constraints
-      if (hasCapacityConstraint) {
-        dcs.forEach(dc => {
-          if (dc.totalDemand > constraints.dcCapacity) {
-            capacityViolations++;
-            constraintViolations++;
-          }
-        });
+  const used = new Set<string>();
+  const open: Array<{ id: string; latitude: number; longitude: number; name: string }> = [];
+
+  // Helper to compute current cost
+  const evalCurrent = () =>
+    evaluateCost(customers, open, unit, maxRadius, demandPct, dcCapacity, {
+      transportationCostPerMilePerUnit: costParams?.transportationCostPerMilePerUnit ?? 0,
+      facilityCost: costParams?.facilityCost ?? 0,
+      distanceUnit: unit,
+      costUnit: costParams?.costUnit ?? "",
+    });
+
+  // 1) Greedy add: add best single site at a time
+  while (open.length < maxSites) {
+    let bestCand: any = null;
+    let bestCost = Infinity;
+
+    // Try each unused candidate by adding it
+    for (const cand of candidates) {
+      if (used.has(cand.id)) continue;
+      open.push(cand);
+      const { totalCost, feasible } = evalCurrent();
+      open.pop();
+
+      // In "sites" mode: only consider feasibility; cost is distance-only since facilityCost=0 there anyway
+      // In "cost" mode: consider both feasibility and total cost (with opening cost)
+      const score = feasible ? totalCost : Infinity;
+
+      if (score < bestCost) {
+        bestCost = score;
+        bestCand = cand;
       }
+    }
 
-      if (constraintViolations === 0) {
+    // If no improvement or still Infinity (unfeasible) and we’re not in cost mode, we still add until numDCs
+    if (!bestCand) break;
+
+    open.push(bestCand);
+    used.add(bestCand.id);
+
+    // In "cost" mode: stop adding when adding more sites doesn't improve cost anymore
+    if (isCostMode) {
+      // Check if adding the best candidate we just picked actually *reduced* cost vs previous set
+      if (open.length === 1) continue; // first site — nothing to compare to
+      // previous set = open without last
+      const prev = open.slice(0, -1);
+      const prevCost = evaluateCost(customers, prev, unit, maxRadius, demandPct, dcCapacity, {
+        transportationCostPerMilePerUnit: costParams!.transportationCostPerMilePerUnit,
+        facilityCost: costParams!.facilityCost,
+        distanceUnit: unit,
+        costUnit: costParams!.costUnit,
+      }).totalCost;
+
+      const nowCost = evaluateCost(customers, open, unit, maxRadius, demandPct, dcCapacity, {
+        transportationCostPerMilePerUnit: costParams!.transportationCostPerMilePerUnit,
+        facilityCost: costParams!.facilityCost,
+        distanceUnit: unit,
+        costUnit: costParams!.costUnit,
+      }).totalCost;
+
+      if (nowCost > prevCost - 1e-9) {
+        // No improvement — revert and stop greedy add
+        open.pop();
+        used.delete(bestCand.id);
         break;
       }
-      currentNumSites++;
+    } else {
+      // sites mode: stop when we hit numDCs
+      if (open.length >= (numDCs || 1)) break;
     }
-
-    if (constraintViolations > 0) {
-      if (currentNumSites > maxSites) {
-        warnings.push(
-          `Unable to find feasible solution even with ${maxSites} sites. Consider relaxing constraints.`
-        );
-      }
-    }
-  } else {
-    // Sites-based optimization: use ONLY the specified number of sites
-    // Check if this is even feasible with capacity constraints
-    if (hasCapacityConstraint) {
-      const maxPossibleCapacity = numDCs * constraints.dcCapacity;
-      if (totalDemand > maxPossibleCapacity) {
-        warnings.push(
-          `INFEASIBLE: Total demand (${totalDemand.toFixed(2)} ${constraints.capacityUnit || 'm3'}) exceeds maximum capacity with ${numDCs} sites (${maxPossibleCapacity.toFixed(2)} ${constraints.capacityUnit || 'm3'}). You need at least ${Math.ceil(totalDemand / constraints.dcCapacity)} sites, or increase capacity to ${(totalDemand / numDCs).toFixed(2)} ${constraints.capacityUnit || 'm3'} per site.`
-        );
-      }
-    }
-    
-    dcs = kMeansOptimization(customers, numDCs);
   }
 
-  // Final check: Report any capacity violations
-  let capacityViolations = 0;
-  if (hasCapacityConstraint) {
-    dcs.forEach(dc => {
-      if (dc.totalDemand > constraints.dcCapacity) {
-        capacityViolations++;
-        const unitLabel = constraints.capacityUnit || 'm3';
-        const overage = dc.totalDemand - constraints.dcCapacity;
-        warnings.push(
-          `Site ${dc.id} exceeds capacity by ${overage.toFixed(2)} ${unitLabel}: ${dc.totalDemand.toFixed(2)} / ${constraints.dcCapacity} ${unitLabel} (${((dc.totalDemand / constraints.dcCapacity) * 100).toFixed(1)}% utilization)`
-        );
-      }
-    });
-  }
-
-  // Check distance violations in sites mode (informational)
-  if (mode === 'sites' && constraints.maxRadius > 0) {
-    const targetDemandPercentage = constraints.demandPercentage || 100;
-    let sitesViolatingDistance = 0;
-    
-    dcs.forEach(dc => {
-      if (dc.totalDemand === 0) return;
-      
-      let demandWithinRadius = 0;
-      
-      dc.assignedCustomers.forEach(customer => {
-        const distance = haversineDistance(
-          customer.latitude,
-          customer.longitude,
-          dc.latitude,
-          dc.longitude
-        );
-        if (distance <= constraints.maxRadius) {
-          demandWithinRadius += customer.demand * customer.conversionFactor;
+  // 2) Local improvement: try deletions (cost mode only) and swaps
+  if (isCostMode) {
+    // Deletions: remove any site that improves cost (because of fixed opening cost)
+    let improved = true;
+    while (improved && open.length > 1) {
+      improved = false;
+      const base = evalCurrent().totalCost;
+      for (let i = 0; i < open.length; i++) {
+        const removed = open[i];
+        const trial = [...open.slice(0, i), ...open.slice(i + 1)];
+        const { totalCost, feasible } = evaluateCost(customers, trial, unit, maxRadius, demandPct, dcCapacity, {
+          transportationCostPerMilePerUnit: costParams!.transportationCostPerMilePerUnit,
+          facilityCost: costParams!.facilityCost,
+          distanceUnit: unit,
+          costUnit: costParams!.costUnit,
+        });
+        if (feasible && totalCost < base - 1e-9) {
+          // accept deletion
+          used.delete(removed.id);
+          open.splice(i, 1);
+          improved = true;
+          break;
         }
-      });
-      
-      const percentageWithinRadius = (demandWithinRadius / dc.totalDemand) * 100;
-      
-      if (percentageWithinRadius < targetDemandPercentage) {
-        sitesViolatingDistance++;
       }
-    });
-    
-    if (sitesViolatingDistance > 0) {
-      warnings.push(
-        `${sitesViolatingDistance} site(s) do not meet the ${targetDemandPercentage}% demand coverage within ${constraints.maxRadius} km. This is informational only in 'Number of Sites' mode.`
-      );
     }
   }
 
-  const feasible = capacityViolations === 0 && (mode !== 'sites' || totalDemand <= (hasCapacityConstraint ? numDCs * constraints.dcCapacity : Infinity));
+  // Swaps (both modes): swap one open with one closed if it helps
+  {
+    let improved = true;
+    while (improved) {
+      improved = false;
+      const base = evalCurrent().totalCost;
+      for (let i = 0; i < open.length; i++) {
+        const removed = open[i];
+        for (const cand of candidates) {
+          if (used.has(cand.id)) continue;
+          const trial = [...open.slice(0, i), cand, ...open.slice(i + 1)];
+          const { totalCost, feasible } = evaluateCost(customers, trial, unit, maxRadius, demandPct, dcCapacity, {
+            transportationCostPerMilePerUnit: costParams?.transportationCostPerMilePerUnit ?? 0,
+            facilityCost: costParams?.facilityCost ?? 0,
+            distanceUnit: unit,
+            costUnit: costParams?.costUnit ?? "",
+          });
+          // prefer strictly lower total cost; tie-breaker in evaluateCost prefers fewer sites already
+          if (feasible && totalCost < base - 1e-9) {
+            // accept swap
+            used.delete(removed.id);
+            used.add(cand.id);
+            open[i] = cand;
+            improved = true;
+            break;
+          }
+        }
+        if (improved) break;
+      }
+    }
+  }
+
+  // Final evaluate & assignment to check feasibility
+  const finalEval = evaluateCost(customers, open, unit, maxRadius, demandPct, dcCapacity, {
+    transportationCostPerMilePerUnit: costParams?.transportationCostPerMilePerUnit ?? 0,
+    facilityCost: costParams?.facilityCost ?? 0,
+    distanceUnit: unit,
+    costUnit: costParams?.costUnit ?? "",
+  });
+
+  // Build DCs for UI
+  const dcs: DistributionCenter[] = open.map((s, i) => formatDC(`DC_${i + 1}`, s.latitude, s.longitude, s.name));
+
+  // If infeasible, attach warnings
+  if (!finalEval.feasible) {
+    warnings.push(
+      "Infeasible with current constraints. Increase max radius and/or DC capacity, or reduce demand percentage.",
+    );
+  }
 
   return {
     dcs,
-    feasible,
+    feasible: finalEval.feasible,
     warnings,
+    costBreakdown: {
+      totalCost: Math.round(finalEval.totalCost * 1000) / 1000,
+      transportationCost: Math.round(finalEval.transportationCost * 1000) / 1000,
+      facilityCost: Math.round(finalEval.facilityCost * 1000) / 1000,
+      numSites: dcs.length,
+    },
   };
 }
