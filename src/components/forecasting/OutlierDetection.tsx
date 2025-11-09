@@ -19,7 +19,7 @@ import {
 
 interface OutlierDetectionProps {
   data: HistoricalDataPoint[];
-  onRemoveOutliers: (outlierIndices: number[]) => void;
+  onRemoveOutliers: (outlierIndices: number[], method: string, lowerThreshold: number, upperThreshold: number) => void;
 }
 
 type OutlierMethod = "iqr" | "zscore" | "modified-zscore";
@@ -92,7 +92,7 @@ export function OutlierDetection({ data, onRemoveOutliers }: OutlierDetectionPro
   if (!outlierAnalysis) return null;
 
   const handleRemoveOutliers = () => {
-    onRemoveOutliers(outlierAnalysis.outlierIndices);
+    onRemoveOutliers(outlierAnalysis.outlierIndices, method, outlierAnalysis.lowerThreshold, outlierAnalysis.upperThreshold);
   };
 
   return (

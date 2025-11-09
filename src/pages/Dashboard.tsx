@@ -27,7 +27,7 @@ const tools = [{
 }, {
   icon: Network,
   title: 'Network Analysis',
-  description: 'Supply Chain Optimization',
+  description: 'JCG Supply Chain Optimization',
   route: '/network',
   type: 'network' as const,
   color: 'network',
@@ -87,7 +87,7 @@ const Dashboard = () => {
               </div>
 
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gfa via-forecasting to-inventory bg-clip-text text-transparent animate-gradient pb-2 leading-tight">
-                Supply Chain Optimization
+                JCG Supply Chain Optimization
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mt-6">
                 Advanced tools with interactive assistant to streamline operations and provide intelligent insights

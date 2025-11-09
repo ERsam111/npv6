@@ -13,6 +13,7 @@ import { DataAnalytics } from "@/components/forecasting/DataAnalytics";
 import { ForecastResults } from "@/components/forecasting/ForecastResults";
 import { OutlierDetection } from "@/components/forecasting/OutlierDetection";
 import { TimeFilterPanel } from "@/components/forecasting/TimeFilterPanel";
+import { ForecastingDataSupport } from "@/components/forecasting/ForecastingDataSupport";
 import { HistoricalDataPoint, ForecastResult } from "@/types/forecasting";
 import { generateForecasts } from "@/utils/forecastingModels";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +37,7 @@ const DemandForecasting = () => {
   const [forecastResults, setForecastResults] = useState<ForecastResult[]>([]);
   const [filterStartDate, setFilterStartDate] = useState<Date | null>(null);
   const [filterEndDate, setFilterEndDate] = useState<Date | null>(null);
+  const [outlierInfo, setOutlierInfo] = useState<any>(null);
   const [modelParams, setModelParams] = useState<Record<string, any>>({
     moving_average: { window: 3 },
     exponential_smoothing: { alpha: 0.3 },
@@ -125,10 +127,16 @@ const DemandForecasting = () => {
     }
   };
 
-  const handleRemoveOutliers = (outlierIndices: number[]) => {
+  const handleRemoveOutliers = (outlierIndices: number[], method: string, lowerThreshold: number, upperThreshold: number) => {
     const filteredData = historicalData.filter((_, idx) => !outlierIndices.includes(idx));
     setHistoricalData(filteredData);
     setForecastResults([]);
+    setOutlierInfo({
+      count: outlierIndices.length,
+      method,
+      lowerThreshold,
+      upperThreshold
+    });
     
     toast({
       title: "Outliers removed",
@@ -474,6 +482,20 @@ const DemandForecasting = () => {
                 )}
                 product={selectedProduct}
                 granularity={granularity}
+              />
+            )}
+
+            {forecastResults.length > 0 && historicalData.length > 0 && (
+              <ForecastingDataSupport
+                historicalData={historicalData}
+                forecastResults={forecastResults}
+                selectedProduct={selectedProduct}
+                selectedCustomer={selectedCustomer}
+                granularity={granularity}
+                forecastPeriods={forecastPeriods}
+                modelParams={modelParams}
+                currentScenario={currentScenario}
+                outlierAnalysis={outlierInfo}
               />
             )}
 

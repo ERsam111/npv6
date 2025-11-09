@@ -24,7 +24,7 @@ const Index = () => {
   }, {
     icon: Network,
     title: "Network Analysis",
-    description: "Supply Chain Optimization",
+    description: "JCG Supply Chain Optimization",
     details: "Visualize and optimize your entire supply network with real-time flow analysis",
     route: "/network",
     color: "accent",
@@ -414,7 +414,7 @@ const Index = () => {
           {/* Bottom Bar */}
           <div className="border-t pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2025 Supply Chain Intelligence. All rights reserved.
+              © 2025 JCG Supply Chain Intelligence. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <a href="#" className="text-muted-foreground hover:text-primary transition-colors">

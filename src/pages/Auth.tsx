@@ -53,7 +53,7 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Supply Chain Suite</CardTitle>
+          <CardTitle className="text-3xl font-bold">JCG Supply Chain Suite</CardTitle>
           <CardDescription>Sign in to access your optimization tools</CardDescription>
         </CardHeader>
         <CardContent>
