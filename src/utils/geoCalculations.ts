@@ -1,6 +1,6 @@
 // src/utils/geoCalculations.ts
 // Drop-in replacement: adds "open facility" cost and chooses the fewest sites that minimize total cost
-// Works with your existing GFA page that calls `optimizeWithConstraints(...)`
+// Also exports haversineDistance for exportReport.ts compatibility
 
 import type { Customer, DistributionCenter, OptimizationSettings, Product } from "@/types/gfa";
 
@@ -14,8 +14,8 @@ type CostParams = {
 
 type Constraints = {
   maxRadius: number; // in distanceUnit
-  demandPercentage: number; // 0..100 (% of each customer's demand that must be covered)
-  dcCapacity: number; // 0 => unlimited; else capacity in same units as demand
+  demandPercentage: number; // 0..100
+  dcCapacity: number; // 0 => unlimited
   capacityUnit: string;
 };
 
@@ -33,7 +33,9 @@ type OptimizeResult = {
 
 const toRad = (v: number) => (v * Math.PI) / 180;
 
-// Haversine distance in KM
+// ---- Distance helpers ----
+
+// Haversine distance in **kilometers**
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // km
   const dLat = toRad(lat2 - lat1);
@@ -48,6 +50,21 @@ function convertKmToUnit(km: number, unit: DistanceUnit): number {
   return km;
 }
 
+/**
+ * Named export kept for backward compatibility with exportReport.ts.
+ * Returns the great-circle distance between two points in the requested unit.
+ */
+export function haversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+  unit: DistanceUnit = "km",
+): number {
+  const km = haversineKm(lat1, lon1, lat2, lon2);
+  return convertKmToUnit(km, unit);
+}
+
 function distanceInUnit(
   a: { latitude: number; longitude: number },
   b: { latitude: number; longitude: number },
@@ -59,28 +76,24 @@ function distanceInUnit(
 
 // Extract "demand" for a customer; if none present, default to 1
 function getCustomerDemand(c: Customer): number {
-  // Common field names fallback
   const v = (c as any).demand ?? (c as any).demandQty ?? (c as any).volume ?? (c as any).qty ?? 1;
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? n : 1;
 }
 
-// Choose candidate DC locations.
-// Simple + effective: allow each customer location to be a candidate.
-// (If you later have a separate DC candidates table, swap in that dataset here.)
+// Choose candidate DC locations (defaults to unique customer coords)
 function buildCandidates(
   customers: Customer[],
 ): Array<{ id: string; latitude: number; longitude: number; name: string }> {
   const uniq = new Map<string, { id: string; latitude: number; longitude: number; name: string }>();
-  customers.forEach((c, idx) => {
-    const key = `${Number(c.latitude)},${Number(c.longitude)}`;
+  customers.forEach((c) => {
+    const lat = Number((c as any).latitude);
+    const lng = Number((c as any).longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const key = `${lat},${lng}`;
     if (!uniq.has(key)) {
-      uniq.set(key, {
-        id: `CAND_${uniq.size + 1}`,
-        latitude: Number(c.latitude),
-        longitude: Number(c.longitude),
-        name: (c as any).city || (c as any).name || `Site ${uniq.size + 1}`,
-      });
+      const name = (c as any).city || (c as any).name || `Site ${uniq.size + 1}`;
+      uniq.set(key, { id: `CAND_${uniq.size + 1}`, latitude: lat, longitude: lng, name });
     }
   });
   return Array.from(uniq.values());
@@ -104,7 +117,6 @@ function assignCustomersToOpenSites(
   demandPct: number,
   dcCapacity: number,
 ) {
-  // For capacity, we track remaining capacity per site (if dcCapacity > 0)
   const capacityRem: Record<string, number> = {};
   if (dcCapacity > 0) {
     for (const s of openSites) capacityRem[s.id] = dcCapacity;
@@ -112,7 +124,6 @@ function assignCustomersToOpenSites(
 
   type Assign = { siteId: string | null; dist: number; served: number; unmet: number };
   const assign: Record<string, Assign> = {};
-
   let totalUnmet = 0;
 
   for (const c of customers) {
@@ -123,7 +134,7 @@ function assignCustomersToOpenSites(
     let best: { id: string; dist: number } | null = null;
     for (const s of openSites) {
       const d = distanceInUnit(
-        { latitude: Number(c.latitude), longitude: Number(c.longitude) },
+        { latitude: Number((c as any).latitude), longitude: Number((c as any).longitude) },
         { latitude: s.latitude, longitude: s.longitude },
         unit,
       );
@@ -132,10 +143,11 @@ function assignCustomersToOpenSites(
       }
     }
 
+    const key = (c as any).id ?? JSON.stringify(c);
+
     if (!best) {
       // No site within radius → all "mustServe" is unmet
-      assign[c as any].unmet = mustServe;
-      assign[(c as any).id ?? JSON.stringify(c)] = {
+      assign[key] = {
         siteId: null,
         dist: Infinity,
         served: 0,
@@ -155,7 +167,7 @@ function assignCustomersToOpenSites(
     const unmet = Math.max(0, mustServe - served);
     totalUnmet += unmet;
 
-    assign[(c as any).id ?? JSON.stringify(c)] = {
+    assign[key] = {
       siteId: best.id,
       dist: best.dist,
       served,
@@ -213,12 +225,10 @@ function evaluateCost(
   };
 }
 
-// Greedy + local improvement for Uncapacitated Facility Location (with option capacity)
-// 1) Start from the single best site, then keep adding sites that most reduce cost
-// 2) Try deletions and 1-for-1 swaps that reduce cost
+// Greedy + local improvement for facility location (with optional capacity)
 export function optimizeWithConstraints(
   customers: Customer[],
-  numDCs: number, // still supported for "sites" mode; ignored for "cost" mode beyond being an upper cap if you want
+  numDCs: number,
   constraints: Constraints,
   mode: OptimizationSettings["mode"], // "sites" | "cost"
   costParams?: CostParams,
@@ -240,8 +250,6 @@ export function optimizeWithConstraints(
     return { dcs: [], feasible: false, warnings: ["No candidate sites available."] };
   }
 
-  // MODE A: "sites" → select exactly numDCs minimizing distance (classic p-median within radius)
-  // MODE B: "cost"  → opening cost active; choose number of sites endogenously
   const isCostMode = mode === "cost";
   const maxSites = isCostMode ? Math.min(candidates.length, 200) : Math.min(numDCs || 1, candidates.length);
 
@@ -257,39 +265,31 @@ export function optimizeWithConstraints(
       costUnit: costParams?.costUnit ?? "",
     });
 
-  // 1) Greedy add: add best single site at a time
+  // 1) Greedy add
   while (open.length < maxSites) {
     let bestCand: any = null;
     let bestCost = Infinity;
 
-    // Try each unused candidate by adding it
     for (const cand of candidates) {
       if (used.has(cand.id)) continue;
       open.push(cand);
       const { totalCost, feasible } = evalCurrent();
       open.pop();
 
-      // In "sites" mode: only consider feasibility; cost is distance-only since facilityCost=0 there anyway
-      // In "cost" mode: consider both feasibility and total cost (with opening cost)
       const score = feasible ? totalCost : Infinity;
-
       if (score < bestCost) {
         bestCost = score;
         bestCand = cand;
       }
     }
 
-    // If no improvement or still Infinity (unfeasible) and we’re not in cost mode, we still add until numDCs
     if (!bestCand) break;
 
     open.push(bestCand);
     used.add(bestCand.id);
 
-    // In "cost" mode: stop adding when adding more sites doesn't improve cost anymore
     if (isCostMode) {
-      // Check if adding the best candidate we just picked actually *reduced* cost vs previous set
-      if (open.length === 1) continue; // first site — nothing to compare to
-      // previous set = open without last
+      if (open.length === 1) continue;
       const prev = open.slice(0, -1);
       const prevCost = evaluateCost(customers, prev, unit, maxRadius, demandPct, dcCapacity, {
         transportationCostPerMilePerUnit: costParams!.transportationCostPerMilePerUnit,
@@ -306,20 +306,17 @@ export function optimizeWithConstraints(
       }).totalCost;
 
       if (nowCost > prevCost - 1e-9) {
-        // No improvement — revert and stop greedy add
         open.pop();
         used.delete(bestCand.id);
         break;
       }
     } else {
-      // sites mode: stop when we hit numDCs
       if (open.length >= (numDCs || 1)) break;
     }
   }
 
-  // 2) Local improvement: try deletions (cost mode only) and swaps
+  // 2) Local improvement: deletions (cost mode) and swaps (both)
   if (isCostMode) {
-    // Deletions: remove any site that improves cost (because of fixed opening cost)
     let improved = true;
     while (improved && open.length > 1) {
       improved = false;
@@ -334,7 +331,6 @@ export function optimizeWithConstraints(
           costUnit: costParams!.costUnit,
         });
         if (feasible && totalCost < base - 1e-9) {
-          // accept deletion
           used.delete(removed.id);
           open.splice(i, 1);
           improved = true;
@@ -344,7 +340,6 @@ export function optimizeWithConstraints(
     }
   }
 
-  // Swaps (both modes): swap one open with one closed if it helps
   {
     let improved = true;
     while (improved) {
@@ -361,9 +356,7 @@ export function optimizeWithConstraints(
             distanceUnit: unit,
             costUnit: costParams?.costUnit ?? "",
           });
-          // prefer strictly lower total cost; tie-breaker in evaluateCost prefers fewer sites already
           if (feasible && totalCost < base - 1e-9) {
-            // accept swap
             used.delete(removed.id);
             used.add(cand.id);
             open[i] = cand;
@@ -376,7 +369,6 @@ export function optimizeWithConstraints(
     }
   }
 
-  // Final evaluate & assignment to check feasibility
   const finalEval = evaluateCost(customers, open, unit, maxRadius, demandPct, dcCapacity, {
     transportationCostPerMilePerUnit: costParams?.transportationCostPerMilePerUnit ?? 0,
     facilityCost: costParams?.facilityCost ?? 0,
@@ -384,10 +376,9 @@ export function optimizeWithConstraints(
     costUnit: costParams?.costUnit ?? "",
   });
 
-  // Build DCs for UI
   const dcs: DistributionCenter[] = open.map((s, i) => formatDC(`DC_${i + 1}`, s.latitude, s.longitude, s.name));
 
-  // If infeasible, attach warnings
+  const warnings: string[] = [];
   if (!finalEval.feasible) {
     warnings.push(
       "Infeasible with current constraints. Increase max radius and/or DC capacity, or reduce demand percentage.",
