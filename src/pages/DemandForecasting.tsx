@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Play, ChevronDown } from "lucide-react";
+import { Play, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { HistoricalDataUpload } from "@/components/forecasting/HistoricalDataUpload";
 import { ModelSelector } from "@/components/forecasting/ModelSelector";
@@ -14,6 +14,9 @@ import { ForecastResults } from "@/components/forecasting/ForecastResults";
 import { OutlierDetection } from "@/components/forecasting/OutlierDetection";
 import { TimeFilterPanel } from "@/components/forecasting/TimeFilterPanel";
 import { ForecastingDataSupport } from "@/components/forecasting/ForecastingDataSupport";
+import { ManualAdjustment } from "@/components/forecasting/ManualAdjustment";
+import { PromotionalAdjustment } from "@/components/forecasting/PromotionalAdjustment";
+import { DemandForecastingSidebar } from "@/components/forecasting/DemandForecastingSidebar";
 import { HistoricalDataPoint, ForecastResult } from "@/types/forecasting";
 import { generateForecasts } from "@/utils/forecastingModels";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +28,7 @@ import { useScenarios } from "@/contexts/ScenarioContext";
 const DemandForecasting = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<string>("input");
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const { currentScenario, setCurrentScenario, loadScenariosByProject } = useScenarios();
   const [rawHistoricalData, setRawHistoricalData] = useState<HistoricalDataPoint[]>([]);
@@ -247,23 +251,7 @@ const DemandForecasting = () => {
   const uniqueCustomers = Array.from(new Set(historicalData.map(d => d.customer)));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-forecasting/5 to-background flex flex-col">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-gradient-to-r from-forecasting/10 to-forecasting/5 backdrop-blur border-b border-forecasting/20">
-        <div className="container mx-auto px-4 py-2 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-forecasting">Demand Forecasting</h1>
-          <Button
-            onClick={() => navigate("/scenario2")}
-            size="sm"
-            className="gap-2"
-            style={{ background: 'var(--gradient-forecasting)' }}
-          >
-            Next: Scenario 2
-            <ArrowLeft className="h-4 w-4 rotate-180" />
-          </Button>
-        </div>
-      </div>
-
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Project & Scenario Navigation */}
       <div className="border-b border-forecasting/20 bg-gradient-to-r from-forecasting-light to-transparent">
         <ProjectScenarioNav
@@ -273,7 +261,7 @@ const DemandForecasting = () => {
           moduleName="Demand Forecasting"
           onProjectChange={(project) => {
             setCurrentProject(project);
-            loadScenariosByProject(project.id, 'forecasting'); // Filter by forecasting module
+            loadScenariosByProject(project.id, 'forecasting');
           }}
           onScenarioChange={(scenario) => {
             setCurrentScenario(scenario);
@@ -281,232 +269,229 @@ const DemandForecasting = () => {
         />
       </div>
 
-      <div className="container mx-auto px-4 py-8 flex-1">
+      {/* Main Content with Sidebar */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar Navigation */}
+        <DemandForecastingSidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          hasData={historicalData.length > 0}
+          hasForecast={forecastResults.length > 0}
+        />
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left Column - Configuration */}
-          <div className="space-y-6">
-            <Collapsible open={true} defaultOpen>
-              <Card className="shadow-lg">
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <CardTitle>Data Upload</CardTitle>
-                      <ChevronDown className="h-4 w-4 transition-transform" />
-                    </div>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent>
-                    <HistoricalDataUpload onDataUpload={handleDataUpload} />
-                  </CardContent>
-                </CollapsibleContent>
+        {/* Content Area */}
+        <div className="flex-1 overflow-auto p-6">
+          {/* Input Data Tab */}
+          {activeTab === "input" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Data Upload</CardTitle>
+                  <CardDescription>Upload historical demand data to begin forecasting</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <HistoricalDataUpload onDataUpload={handleDataUpload} />
+                </CardContent>
               </Card>
-            </Collapsible>
-            
-            {historicalData.length > 0 && (
-              <>
-                <Collapsible defaultOpen>
-                  <Card className="shadow-lg">
-                    <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <CardTitle>Time Filter</CardTitle>
-                          <ChevronDown className="h-4 w-4 transition-transform" />
-                        </div>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <CardContent>
+
+              {historicalData.length > 0 && (
+                <>
+                  <DataAnalytics data={historicalData} />
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Data Preprocessing</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div>
+                        <h4 className="font-medium mb-3">Time Filter</h4>
                         <TimeFilterPanel
                           startDate={filterStartDate}
                           endDate={filterEndDate}
                           onFilterChange={handleTimeFilter}
                         />
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
+                      </div>
 
-                <Collapsible defaultOpen>
-                  <Card className="shadow-lg">
-                    <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <CardTitle>Outlier Detection</CardTitle>
-                          <ChevronDown className="h-4 w-4 transition-transforms" />
-                        </div>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <CardContent>
+                      <div>
+                        <h4 className="font-medium mb-3">Outlier Detection</h4>
                         <OutlierDetection
                           data={historicalData}
                           onRemoveOutliers={handleRemoveOutliers}
                         />
-                      </CardContent>
-                    </CollapsibleContent>
+                      </div>
+                    </CardContent>
                   </Card>
-                </Collapsible>
 
-                <Collapsible open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-                  <Card className="shadow-lg">
-                    <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle>Forecast Configuration</CardTitle>
-                            <CardDescription>
-                              Select product and forecast parameters (Sum aggregation)
-                            </CardDescription>
+                  <Collapsible open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+                    <Card>
+                      <CollapsibleTrigger asChild>
+                        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle>Forecast Configuration</CardTitle>
+                              <CardDescription>Select product and forecast parameters</CardDescription>
+                            </div>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${isConfigOpen ? 'rotate-180' : ''}`} />
                           </div>
-                          <ChevronDown className={`h-4 w-4 transition-transform ${isConfigOpen ? 'rotate-180' : ''}`} />
-                        </div>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Product</Label>
-                          <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select product" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {uniqueProducts.map(product => (
-                                <SelectItem key={product} value={product}>
-                                  {product}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        </CardHeader>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Product</Label>
+                              <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select product" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {uniqueProducts.map(product => (
+                                    <SelectItem key={product} value={product}>
+                                      {product}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
 
-                        <div className="space-y-2">
-                          <Label>Customer (Optional)</Label>
-                          <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Customers</SelectItem>
-                              {uniqueCustomers.map(customer => (
-                                <SelectItem key={customer} value={customer}>
-                                  {customer}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                            <div className="space-y-2">
+                              <Label>Customer (Optional)</Label>
+                              <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All Customers</SelectItem>
+                                  {uniqueCustomers.map(customer => (
+                                    <SelectItem key={customer} value={customer}>
+                                      {customer}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
 
-                        <div className="space-y-2">
-                          <Label>Forecast Granularity</Label>
-                          <Select value={granularity} onValueChange={handleGranularityChange}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="daily">Daily</SelectItem>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                            <div className="space-y-2">
+                              <Label>Forecast Granularity</Label>
+                              <Select value={granularity} onValueChange={handleGranularityChange}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="daily">Daily</SelectItem>
+                                  <SelectItem value="weekly">Weekly</SelectItem>
+                                  <SelectItem value="monthly">Monthly</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
 
-                        <div className="space-y-2">
-                          <Label>
-                            Forecast Horizon ({granularity === "daily" ? "Days" : granularity === "weekly" ? "Weeks" : "Months"})
-                          </Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            max={granularity === "daily" ? 365 : granularity === "weekly" ? 52 : 24}
-                            value={forecastPeriods}
-                            onChange={(e) => setForecastPeriods(Number(e.target.value))}
+                            <div className="space-y-2">
+                              <Label>
+                                Forecast Horizon ({granularity === "daily" ? "Days" : granularity === "weekly" ? "Weeks" : "Months"})
+                              </Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max={granularity === "daily" ? 365 : granularity === "weekly" ? 52 : 24}
+                                value={forecastPeriods}
+                                onChange={(e) => setForecastPeriods(Number(e.target.value))}
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+
+                  <Collapsible open={isModelOpen} onOpenChange={setIsModelOpen}>
+                    <Card>
+                      <CollapsibleTrigger asChild>
+                        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <CardTitle>Model Selection</CardTitle>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${isModelOpen ? 'rotate-180' : ''}`} />
+                          </div>
+                        </CardHeader>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent>
+                          <ModelSelector
+                            selectedModels={selectedModels}
+                            onModelToggle={handleModelToggle}
+                            modelParams={modelParams}
+                            onParamChange={handleParamChange}
+                            granularity={granularity}
                           />
-                        </div>
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
 
-                <Collapsible open={isModelOpen} onOpenChange={setIsModelOpen}>
-                  <Card className="shadow-lg">
-                    <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <CardTitle>Model Selection</CardTitle>
-                          <ChevronDown className={`h-4 w-4 transition-transform ${isModelOpen ? 'rotate-180' : ''}`} />
-                        </div>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <CardContent>
-                        <ModelSelector
-                          selectedModels={selectedModels}
-                          onModelToggle={handleModelToggle}
-                          modelParams={modelParams}
-                          onParamChange={handleParamChange}
+                  <div className="flex justify-between items-center">
+                    <Button
+                      onClick={runForecasting}
+                      size="lg"
+                      disabled={selectedModels.length === 0 || !selectedProduct}
+                      className="gap-2"
+                    >
+                      <Play className="h-4 w-4" />
+                      Generate Forecast
+                    </Button>
+
+                    {forecastResults.length > 0 && (
+                      <div className="space-y-6">
+                        <ForecastResults
+                          results={forecastResults}
+                          historicalData={historicalData.filter(d => 
+                            d.product === selectedProduct &&
+                            (selectedCustomer === "all" || d.customer === selectedCustomer)
+                          )}
+                          product={selectedProduct}
                           granularity={granularity}
                         />
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
-                <Button
-                  onClick={runForecasting}
-                  className="w-full"
-                  size="lg"
-                  disabled={selectedModels.length === 0 || !selectedProduct}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Generate Forecast
-                </Button>
-              </>
-            )}
-          </div>
+          {/* Manual Adjustment Tab */}
+          {activeTab === "manual" && (
+            <ManualAdjustment
+              forecastResults={forecastResults}
+              historicalData={historicalData}
+              selectedProduct={selectedProduct}
+              granularity={granularity}
+              onAdjustmentsChange={setForecastResults}
+            />
+          )}
 
-          {/* Right Column - Results */}
-          <div className="lg:col-span-2 space-y-6">
-            {historicalData.length > 0 && (
-              <DataAnalytics data={historicalData} />
-            )}
+          {/* Promotional Adjustment Tab */}
+          {activeTab === "promotional" && (
+            <PromotionalAdjustment
+              forecastResults={forecastResults}
+              selectedProduct={selectedProduct}
+              granularity={granularity}
+              onPromotionalAdjustmentsChange={setForecastResults}
+            />
+          )}
 
-            {forecastResults.length > 0 && (
-              <ForecastResults
-                results={forecastResults}
-                historicalData={historicalData.filter(d => 
-                  d.product === selectedProduct &&
-                  (selectedCustomer === "all" || d.customer === selectedCustomer)
-                )}
-                product={selectedProduct}
-                granularity={granularity}
-              />
-            )}
-
-            {forecastResults.length > 0 && historicalData.length > 0 && (
-              <ForecastingDataSupport
-                historicalData={historicalData}
-                forecastResults={forecastResults}
-                selectedProduct={selectedProduct}
-                selectedCustomer={selectedCustomer}
-                granularity={granularity}
-                forecastPeriods={forecastPeriods}
-                modelParams={modelParams}
-                currentScenario={currentScenario}
-                outlierAnalysis={outlierInfo}
-              />
-            )}
-
-            {historicalData.length === 0 && (
-              <Card className="shadow-lg">
-                <CardContent className="py-12 text-center text-muted-foreground">
-                  Upload historical data to begin forecasting
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          {/* Data Support Tab */}
+          {activeTab === "data-support" && (
+            <ForecastingDataSupport
+              historicalData={historicalData}
+              forecastResults={forecastResults}
+              selectedProduct={selectedProduct}
+              selectedCustomer={selectedCustomer}
+              granularity={granularity}
+              forecastPeriods={forecastPeriods}
+              modelParams={modelParams}
+              currentScenario={currentScenario}
+              outlierAnalysis={outlierInfo}
+            />
+          )}
         </div>
       </div>
     </div>
