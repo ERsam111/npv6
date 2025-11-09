@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ForecastResult, HistoricalDataPoint } from "@/types/forecasting";
 import { Calendar, Save, Undo2 } from "lucide-react";
@@ -14,6 +15,8 @@ interface ManualAdjustmentProps {
   selectedProduct: string;
   granularity: "daily" | "weekly" | "monthly";
   onAdjustmentsChange: (adjustedResults: ForecastResult[]) => void;
+  uniqueProducts: string[];
+  onProductChange: (product: string) => void;
 }
 
 export function ManualAdjustment({
@@ -21,7 +24,9 @@ export function ManualAdjustment({
   historicalData,
   selectedProduct,
   granularity,
-  onAdjustmentsChange
+  onAdjustmentsChange,
+  uniqueProducts,
+  onProductChange
 }: ManualAdjustmentProps) {
   const [adjustments, setAdjustments] = useState<Record<string, number>>({});
   const [selectedModelId, setSelectedModelId] = useState<string>(
@@ -92,19 +97,38 @@ export function ManualAdjustment({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Select Forecast Model</Label>
-            <select
-              value={selectedModelId}
-              onChange={(e) => setSelectedModelId(e.target.value)}
-              className="w-full p-2 border rounded-md bg-background"
-            >
-              {forecastResults.map(result => (
-                <option key={result.modelId} value={result.modelId}>
-                  {result.modelName} {result.isRecommended && "⭐ (Recommended)"} - MAPE: {result.mape.toFixed(2)}%
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Product</Label>
+              <Select value={selectedProduct} onValueChange={onProductChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {uniqueProducts.map(product => (
+                    <SelectItem key={product} value={product}>
+                      {product}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Select Forecast Model</Label>
+              <Select value={selectedModelId} onValueChange={setSelectedModelId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {forecastResults.map(result => (
+                    <SelectItem key={result.modelId} value={result.modelId}>
+                      {result.modelName} {result.isRecommended && "⭐"} - MAPE: {result.mape.toFixed(2)}%
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex gap-2">

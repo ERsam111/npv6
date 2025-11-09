@@ -3,16 +3,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ForecastResult } from "@/types/forecasting";
 import { Calendar, Plus, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Promotion {
   id: string;
   name: string;
-  startPeriod: number;
-  endPeriod: number;
+  startDate: Date;
+  endDate: Date;
   uplift: number; // percentage
 }
 
@@ -21,43 +26,47 @@ interface PromotionalAdjustmentProps {
   selectedProduct: string;
   granularity: "daily" | "weekly" | "monthly";
   onPromotionalAdjustmentsChange: (adjustedResults: ForecastResult[]) => void;
+  uniqueProducts: string[];
+  onProductChange: (product: string) => void;
 }
 
 export function PromotionalAdjustment({
   forecastResults,
   selectedProduct,
   granularity,
-  onPromotionalAdjustmentsChange
+  onPromotionalAdjustmentsChange,
+  uniqueProducts,
+  onProductChange
 }: PromotionalAdjustmentProps) {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [newPromotion, setNewPromotion] = useState<Partial<Promotion>>({
     name: "",
-    startPeriod: 1,
-    endPeriod: 1,
+    startDate: new Date(),
+    endDate: new Date(),
     uplift: 10
   });
 
   const addPromotion = () => {
-    if (!newPromotion.name || !newPromotion.startPeriod || !newPromotion.endPeriod) {
+    if (!newPromotion.name || !newPromotion.startDate || !newPromotion.endDate) {
       toast.error("Please fill all promotion fields");
       return;
     }
 
-    if (newPromotion.startPeriod! > newPromotion.endPeriod!) {
-      toast.error("Start period must be before end period");
+    if (newPromotion.startDate! > newPromotion.endDate!) {
+      toast.error("Start date must be before end date");
       return;
     }
 
     const promotion: Promotion = {
       id: `promo-${Date.now()}`,
       name: newPromotion.name,
-      startPeriod: newPromotion.startPeriod!,
-      endPeriod: newPromotion.endPeriod!,
+      startDate: newPromotion.startDate!,
+      endDate: newPromotion.endDate!,
       uplift: newPromotion.uplift || 10
     };
 
     setPromotions([...promotions, promotion]);
-    setNewPromotion({ name: "", startPeriod: 1, endPeriod: 1, uplift: 10 });
+    setNewPromotion({ name: "", startDate: new Date(), endDate: new Date(), uplift: 10 });
     toast.success(`Promotion "${promotion.name}" added`);
   };
 
@@ -73,12 +82,13 @@ export function PromotionalAdjustment({
     }
 
     const adjustedResults = forecastResults.map(result => {
-      const adjustedPredictions = result.predictions.map((pred, idx) => {
+      const adjustedPredictions = result.predictions.map((pred) => {
         let adjustedValue = pred.predicted;
+        const predDate = new Date(pred.date);
         
-        // Apply all promotions that overlap with this period
+        // Apply all promotions that overlap with this date
         promotions.forEach(promo => {
-          if (idx + 1 >= promo.startPeriod && idx + 1 <= promo.endPeriod) {
+          if (predDate >= promo.startDate && predDate <= promo.endDate) {
             adjustedValue = adjustedValue * (1 + promo.uplift / 100);
           }
         });
@@ -99,8 +109,6 @@ export function PromotionalAdjustment({
     toast.success(`Applied ${promotions.length} promotion(s) to forecasts`);
   };
 
-  const maxPeriods = forecastResults[0]?.predictions.length || 12;
-
   return (
     <div className="space-y-6">
       <Card>
@@ -114,8 +122,26 @@ export function PromotionalAdjustment({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="md:col-span-2">
+          <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
+              <Label>Product</Label>
+              <Select value={selectedProduct} onValueChange={onProductChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {uniqueProducts.map(product => (
+                    <SelectItem key={product} value={product}>
+                      {product}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="md:col-span-1">
               <Label>Promotion Name</Label>
               <Input
                 value={newPromotion.name}
@@ -123,26 +149,61 @@ export function PromotionalAdjustment({
                 placeholder="e.g., Summer Sale"
               />
             </div>
+            
             <div>
-              <Label>Start Period</Label>
-              <Input
-                type="number"
-                min={1}
-                max={maxPeriods}
-                value={newPromotion.startPeriod}
-                onChange={(e) => setNewPromotion({ ...newPromotion, startPeriod: parseInt(e.target.value) })}
-              />
+              <Label>Start Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !newPromotion.startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {newPromotion.startDate ? format(newPromotion.startDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={newPromotion.startDate}
+                    onSelect={(date) => setNewPromotion({ ...newPromotion, startDate: date })}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
+            
             <div>
-              <Label>End Period</Label>
-              <Input
-                type="number"
-                min={1}
-                max={maxPeriods}
-                value={newPromotion.endPeriod}
-                onChange={(e) => setNewPromotion({ ...newPromotion, endPeriod: parseInt(e.target.value) })}
-              />
+              <Label>End Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !newPromotion.endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {newPromotion.endDate ? format(newPromotion.endDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={newPromotion.endDate}
+                    onSelect={(date) => setNewPromotion({ ...newPromotion, endDate: date })}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
+            
             <div>
               <Label>Uplift (%)</Label>
               <Input
@@ -182,10 +243,9 @@ export function PromotionalAdjustment({
               <TableHeader>
                 <TableRow>
                   <TableHead>Promotion Name</TableHead>
-                  <TableHead>Start Period</TableHead>
-                  <TableHead>End Period</TableHead>
+                  <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
                   <TableHead>Uplift</TableHead>
-                  <TableHead>Duration</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -193,10 +253,9 @@ export function PromotionalAdjustment({
                 {promotions.map((promo) => (
                   <TableRow key={promo.id}>
                     <TableCell className="font-medium">{promo.name}</TableCell>
-                    <TableCell>Period {promo.startPeriod}</TableCell>
-                    <TableCell>Period {promo.endPeriod}</TableCell>
+                    <TableCell>{format(promo.startDate, "PPP")}</TableCell>
+                    <TableCell>{format(promo.endDate, "PPP")}</TableCell>
                     <TableCell className="text-green-600 font-semibold">+{promo.uplift}%</TableCell>
-                    <TableCell>{promo.endPeriod - promo.startPeriod + 1} {granularity}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"

@@ -414,7 +414,7 @@ const DemandForecasting = () => {
                         </CardHeader>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
-                        <CardContent>
+                        <CardContent className="space-y-4">
                           <ModelSelector
                             selectedModels={selectedModels}
                             onModelToggle={handleModelToggle}
@@ -422,36 +422,33 @@ const DemandForecasting = () => {
                             onParamChange={handleParamChange}
                             granularity={granularity}
                           />
+                          
+                          <Button
+                            onClick={runForecasting}
+                            disabled={!selectedProduct || selectedModels.length === 0}
+                            className="w-full"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Generate Forecast
+                          </Button>
                         </CardContent>
                       </CollapsibleContent>
                     </Card>
                   </Collapsible>
 
-                  <div className="flex justify-between items-center">
-                    <Button
-                      onClick={runForecasting}
-                      size="lg"
-                      disabled={selectedModels.length === 0 || !selectedProduct}
-                      className="gap-2"
-                    >
-                      <Play className="h-4 w-4" />
-                      Generate Forecast
-                    </Button>
-
-                    {forecastResults.length > 0 && (
-                      <div className="space-y-6">
-                        <ForecastResults
-                          results={forecastResults}
-                          historicalData={historicalData.filter(d => 
-                            d.product === selectedProduct &&
-                            (selectedCustomer === "all" || d.customer === selectedCustomer)
-                          )}
-                          product={selectedProduct}
-                          granularity={granularity}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  {forecastResults.length > 0 && (
+                    <div className="space-y-6">
+                      <ForecastResults
+                        results={forecastResults}
+                        historicalData={historicalData.filter(d => 
+                          d.product === selectedProduct &&
+                          (selectedCustomer === "all" || d.customer === selectedCustomer)
+                        )}
+                        product={selectedProduct}
+                        granularity={granularity}
+                      />
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -465,6 +462,8 @@ const DemandForecasting = () => {
               selectedProduct={selectedProduct}
               granularity={granularity}
               onAdjustmentsChange={setForecastResults}
+              uniqueProducts={uniqueProducts}
+              onProductChange={setSelectedProduct}
             />
           )}
 
@@ -475,6 +474,8 @@ const DemandForecasting = () => {
               selectedProduct={selectedProduct}
               granularity={granularity}
               onPromotionalAdjustmentsChange={setForecastResults}
+              uniqueProducts={uniqueProducts}
+              onProductChange={setSelectedProduct}
             />
           )}
 
