@@ -142,11 +142,9 @@ export function GFAEditableTable({
   };
   const handleAddConversion = (rowIndex: number) => {
     const updated = [...rows];
-    const conversions = updated[rowIndex].unitConversions || [];
-    conversions.push({
-      unit: "",
-      multiplier: 1
-    });
+    const conversions = { ...(updated[rowIndex].unitConversions || {}) };
+    const newUnitName = `to_unit${Object.keys(conversions).length + 1}`;
+    conversions[newUnitName] = 1;
     updated[rowIndex] = {
       ...updated[rowIndex],
       unitConversions: conversions
@@ -154,13 +152,14 @@ export function GFAEditableTable({
     setRows(updated);
     onDataChange(updated);
   };
-  const handleUpdateConversion = (rowIndex: number, convIndex: number, field: string, value: any) => {
+
+  const handleUpdateConversionKey = (rowIndex: number, oldKey: string, newKey: string) => {
+    if (oldKey === newKey) return;
     const updated = [...rows];
-    const conversions = [...(updated[rowIndex].unitConversions || [])];
-    conversions[convIndex] = {
-      ...conversions[convIndex],
-      [field]: value
-    };
+    const conversions = { ...(updated[rowIndex].unitConversions || {}) };
+    const value = conversions[oldKey];
+    delete conversions[oldKey];
+    conversions[newKey] = value;
     updated[rowIndex] = {
       ...updated[rowIndex],
       unitConversions: conversions
@@ -168,9 +167,23 @@ export function GFAEditableTable({
     setRows(updated);
     onDataChange(updated);
   };
-  const handleDeleteConversion = (rowIndex: number, convIndex: number) => {
+
+  const handleUpdateConversionValue = (rowIndex: number, key: string, value: number) => {
     const updated = [...rows];
-    const conversions = (updated[rowIndex].unitConversions || []).filter((_: any, i: number) => i !== convIndex);
+    const conversions = { ...(updated[rowIndex].unitConversions || {}) };
+    conversions[key] = value;
+    updated[rowIndex] = {
+      ...updated[rowIndex],
+      unitConversions: conversions
+    };
+    setRows(updated);
+    onDataChange(updated);
+  };
+
+  const handleDeleteConversion = (rowIndex: number, key: string) => {
+    const updated = [...rows];
+    const conversions = { ...(updated[rowIndex].unitConversions || {}) };
+    delete conversions[key];
     updated[rowIndex] = {
       ...updated[rowIndex],
       unitConversions: conversions
@@ -272,28 +285,26 @@ export function GFAEditableTable({
 
               // Special handling for unit conversions
               if (tableType === "products" && key === "unitConversions") {
-                const conversions = row.unitConversions || [];
+                const conversions = row.unitConversions || {};
+                const conversionEntries = Object.entries(conversions);
                 return <TableCell key={col}>
                             <div className="space-y-2 min-w-[200px]">
-                              {conversions.map((conv: any, convIdx: number) => <div key={convIdx} className="flex items-center gap-2">
-                                  <Select value={conv.unit || ""} onValueChange={v => handleUpdateConversion(i, convIdx, "unit", v)}>
-                                    <SelectTrigger className="h-8 text-sm w-28">
-                                      <SelectValue placeholder="Unit" />
-                                    </SelectTrigger>
-                                    <SelectContent className="z-50 bg-background">
-                                      <SelectItem value="m3">m³</SelectItem>
-                                      <SelectItem value="pallets">Pallets</SelectItem>
-                                      <SelectItem value="kg">kg</SelectItem>
-                                      <SelectItem value="tonnes">Tonnes</SelectItem>
-                                      <SelectItem value="lbs">lbs</SelectItem>
-                                      <SelectItem value="ft3">ft³</SelectItem>
-                                      <SelectItem value="liters">Liters</SelectItem>
-                                      <SelectItem value="units">Units</SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                              {conversionEntries.map(([unitName, factor], convIdx: number) => <div key={convIdx} className="flex items-center gap-2">
+                                  <Input 
+                                    value={unitName} 
+                                    onChange={e => handleUpdateConversionKey(i, unitName, e.target.value)}
+                                    placeholder="Unit name (e.g., to_m3)"
+                                    className="h-8 text-sm w-32" 
+                                  />
                                   <span className="text-sm">=</span>
-                                  <Input type="number" value={conv.multiplier || 1} onChange={e => handleUpdateConversion(i, convIdx, "multiplier", parseFloat(e.target.value) || 1)} placeholder="Multiplier" className="h-8 text-sm w-24" />
-                                  <Button variant="ghost" size="sm" onClick={() => handleDeleteConversion(i, convIdx)} className="h-7 w-7 p-0">
+                                  <Input 
+                                    type="number" 
+                                    value={typeof factor === 'number' ? factor : 1} 
+                                    onChange={e => handleUpdateConversionValue(i, unitName, parseFloat(e.target.value) || 1)}
+                                    placeholder="Factor" 
+                                    className="h-8 text-sm w-24" 
+                                  />
+                                  <Button variant="ghost" size="sm" onClick={() => handleDeleteConversion(i, unitName)} className="h-7 w-7 p-0">
                                     <Trash2 className="h-3 w-3 text-destructive" />
                                   </Button>
                                 </div>)}
