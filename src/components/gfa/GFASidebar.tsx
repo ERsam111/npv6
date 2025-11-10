@@ -30,9 +30,8 @@ interface GFASidebarProps {
   onBulkUpload: (customers: Customer[], mode: "append" | "overwrite") => void;
   onProductUpdate: (
     productName: string,
-    conversionFactor: number,
-    unitConversions?: any[],
-    sellingPrice?: number,
+    unitConversions?: { [key: string]: number },
+    sellingPrice?: number
   ) => void;
   onSettingsChange: (settings: OptSettings) => void;
   onOptimize: () => void;

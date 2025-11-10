@@ -182,15 +182,15 @@ export function exportReport(data: ExportData) {
     ];
 
     products.forEach(product => {
-      const conversions = product.unitConversions
-        .map(c => `1 ${c.fromUnit} = ${c.factor} ${c.toUnit}`)
-        .join('; ');
+      const conversions = product.unitConversions 
+        ? Object.entries(product.unitConversions).map(([unit, factor]) => `${unit}: ${factor}`).join('; ')
+        : 'None';
       
       productData.push([
         product.name,
         product.baseUnit,
         product.sellingPrice ? product.sellingPrice.toString() : 'Not set',
-        conversions || 'None'
+        conversions
       ]);
     });
 

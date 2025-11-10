@@ -66,32 +66,21 @@ export function DemandInsights({ customers, products = [], dcs = [], settings }:
     }
     
     // All possible conversions
-    if (product?.unitConversions) {
-      product.unitConversions.forEach(conv => {
-        const fromUnit = customer.unitOfMeasure.toLowerCase();
-        const convFrom = conv.fromUnit.toLowerCase();
-        const convTo = conv.toUnit.toLowerCase();
+    if (product?.unitConversions && typeof product.unitConversions === 'object') {
+      Object.entries(product.unitConversions).forEach(([unitName, factor]) => {
+        const fromUnit = customer.unitOfMeasure?.toLowerCase() || "";
+        // For unit conversions like "to_m3", extract the target unit
+        const toUnit = unitName.startsWith('to_') ? unitName.substring(3) : unitName;
         
-        // Direct conversion (customer's unit → conversion target)
-        if (convFrom === fromUnit) {
-          const key = `${customer.product}|${conv.toUnit}`;
+        // Only convert if we have a valid conversion factor
+        if (typeof factor === 'number' && factor > 0) {
+          const key = `${customer.product}|${toUnit}`;
           if (!seenKeys.has(key)) {
             seenKeys.add(key);
             const convertedDemand = customers
-              .filter(c => c.product === customer.product && c.unitOfMeasure.toLowerCase() === fromUnit)
-              .reduce((sum, c) => sum + c.demand * conv.factor, 0);
-            demandByProductUnit.push({ product: customer.product, unit: conv.toUnit, demand: convertedDemand });
-          }
-        }
-        // Reverse conversion (customer's unit is the target, so convert from)
-        else if (convTo === fromUnit) {
-          const key = `${customer.product}|${conv.fromUnit}`;
-          if (!seenKeys.has(key)) {
-            seenKeys.add(key);
-            const convertedDemand = customers
-              .filter(c => c.product === customer.product && c.unitOfMeasure.toLowerCase() === fromUnit)
-              .reduce((sum, c) => sum + c.demand / conv.factor, 0);
-            demandByProductUnit.push({ product: customer.product, unit: conv.fromUnit, demand: convertedDemand });
+              .filter(c => c.product === customer.product && c.unitOfMeasure?.toLowerCase() === fromUnit)
+              .reduce((sum, c) => sum + c.demand * factor, 0);
+            demandByProductUnit.push({ product: customer.product, unit: toUnit, demand: convertedDemand });
           }
         }
       });

@@ -111,14 +111,15 @@ export function ExcelUpload({
               name: name.toString().trim(),
               baseUnit: baseUnit.toString().trim(),
               sellingPrice: sellingPrice > 0 ? sellingPrice : undefined,
+              unitConversions: {}
             };
 
             // Add all unit conversion columns (any column that's not the core fields and has a numeric value)
             Object.keys(row).forEach((key) => {
               if (!['Product', 'product', 'PRODUCT', 'Name', 'name', 'BaseUnit', 'Base Unit', 'baseUnit', 'Unit', 'SellingPrice', 'Selling Price', 'sellingPrice', 'Price'].includes(key)) {
                 const value = parseFloat(row[key]);
-                if (!isNaN(value) && value > 0) {
-                  product[key] = value;
+                if (!isNaN(value) && value > 0 && product.unitConversions) {
+                  product.unitConversions[key] = value;
                 }
               }
             });

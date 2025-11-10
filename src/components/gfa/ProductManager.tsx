@@ -12,7 +12,7 @@ import { getAvailableUnits } from "@/utils/unitConversions";
 
 interface ProductManagerProps {
   products: Product[];
-  onProductUpdate: (productName: string, conversionFactor: number, unitConversions?: UnitConversion[], sellingPrice?: number) => void;
+  onProductUpdate: (productName: string, unitConversions?: { [key: string]: number }, sellingPrice?: number) => void;
   targetUnit: string; // The unit that all products should convert to
 }
 
@@ -65,7 +65,7 @@ export function ProductManager({ products, onProductUpdate, targetUnit }: Produc
                       value={product.sellingPrice || ''}
                       onChange={(e) => {
                         const price = e.target.value ? parseFloat(e.target.value) : undefined;
-                        onProductUpdate(product.name, product.conversionToStandard, product.unitConversions, price);
+                        onProductUpdate(product.name, product.unitConversions, price);
                       }}
                       className="h-7 text-xs w-[120px]"
                     />
@@ -73,17 +73,18 @@ export function ProductManager({ products, onProductUpdate, targetUnit }: Produc
                   <TableCell>
                     <div className="space-y-1">
                       {/* Existing Conversions */}
-                      {product.unitConversions && product.unitConversions.length > 0 && (
+                      {product.unitConversions && Object.keys(product.unitConversions).length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-1">
-                          {product.unitConversions.map((conversion) => (
-                            <div key={conversion.id} className="flex items-center gap-1 text-[10px] bg-muted px-1.5 py-0.5 rounded">
-                              <span>1 {conversion.fromUnit} = {conversion.factor} {conversion.toUnit}</span>
+                          {Object.entries(product.unitConversions).map(([unitName, factor]) => (
+                            <div key={unitName} className="flex items-center gap-1 text-[10px] bg-muted px-1.5 py-0.5 rounded">
+                              <span>{unitName}: {factor}</span>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  const updated = product.unitConversions.filter(c => c.id !== conversion.id);
-                                  onProductUpdate(product.name, product.conversionToStandard, updated, product.sellingPrice);
+                                  const updated = { ...product.unitConversions };
+                                  delete updated[unitName];
+                                  onProductUpdate(product.name, updated, product.sellingPrice);
                                   toast.success("Conversion removed");
                                 }}
                                 className="h-4 w-4 p-0 hover:bg-destructive/20"
@@ -151,14 +152,12 @@ export function ProductManager({ products, onProductUpdate, targetUnit }: Produc
                               toast.error("Fill all fields");
                               return;
                             }
-                            const newConversion = {
-                              id: `${product.name}-${Date.now()}`,
-                              fromUnit: newConv.fromUnit,
-                              toUnit: newConv.toUnit,
-                              factor: parseFloat(newConv.factor)
+                            const unitName = `to_${newConv.toUnit}`;
+                            const updated = {
+                              ...(product.unitConversions || {}),
+                              [unitName]: parseFloat(newConv.factor)
                             };
-                            const updated = [...(product.unitConversions || []), newConversion];
-                            onProductUpdate(product.name, product.conversionToStandard, updated, product.sellingPrice);
+                            onProductUpdate(product.name, updated, product.sellingPrice);
                             setNewConversions({ ...newConversions, [product.name]: { fromUnit: '', toUnit: '', factor: '' } });
                             toast.success("Added");
                           }}

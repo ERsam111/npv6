@@ -1,3 +1,5 @@
+import { Product } from '@/types/gfa';
+
 /**
  * Calculate Haversine distance between two geographic points
  * @param lat1 Latitude of point 1
@@ -44,17 +46,6 @@ export interface Customer {
   conversionFactor: number;
 }
 
-export interface Product {
-  name: string;
-  baseUnit: string;
-  conversionToStandard: number;
-  unitConversions: Array<{
-    id: string;
-    fromUnit: string;
-    toUnit: string;
-    factor: number;
-  }>;
-}
 
 export interface DistributionCenter {
   id: string;
@@ -228,23 +219,17 @@ export function convertDemand(
   }
   
   // Check for custom unit conversions first
-  if (product?.unitConversions && product.unitConversions.length > 0) {
-    // Direct conversion (from → to)
-    const directConv = product.unitConversions.find(
-      c => c.fromUnit.toLowerCase().trim() === normalizedFrom && 
-           c.toUnit.toLowerCase().trim() === normalizedTo
-    );
-    if (directConv) {
-      return demand * directConv.factor;
+  if (product?.unitConversions && typeof product.unitConversions === 'object') {
+    // Check if the unit conversion exists directly
+    const conversionKey = `to_${normalizedTo}`;
+    if (product.unitConversions[conversionKey]) {
+      return demand * product.unitConversions[conversionKey];
     }
     
-    // Reverse conversion (to → from, so we divide)
-    const reverseConv = product.unitConversions.find(
-      c => c.fromUnit.toLowerCase().trim() === normalizedTo && 
-           c.toUnit.toLowerCase().trim() === normalizedFrom
-    );
-    if (reverseConv) {
-      return demand / reverseConv.factor;
+    // Check reverse conversion
+    const reverseKey = `to_${normalizedFrom}`;
+    if (product.unitConversions[reverseKey]) {
+      return demand / product.unitConversions[reverseKey];
     }
   }
   

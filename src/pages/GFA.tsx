@@ -139,8 +139,7 @@ const GFA = () => {
           productMap.set(productName, {
             name: productName,
             baseUnit: customer.unitOfMeasure || "",
-            conversionToStandard: 1,
-            unitConversions: existingProduct?.unitConversions || [],
+            unitConversions: existingProduct?.unitConversions || {},
             sellingPrice: existingProduct?.sellingPrice
           });
         }

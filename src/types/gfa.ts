@@ -9,8 +9,9 @@ export interface Product {
   name: string;
   baseUnit: string; // The baseline unit for this product
   sellingPrice?: number; // Selling price per base unit
-  // Dynamic unit conversions - column names are unit names, values are conversion factors to m3
-  [key: string]: string | number | undefined;
+  // Unit conversion factors - these are column names from Excel that represent conversions to other units
+  // e.g., "to_m3": 1.2 means 1 baseUnit = 1.2 m3
+  unitConversions?: { [unitName: string]: number };
 }
 
 export interface Customer {
