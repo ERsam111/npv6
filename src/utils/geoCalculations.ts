@@ -464,8 +464,8 @@ export function optimizeWithConstraints(
         // Only use existing sites, assign customers to them
         dcs = existingSites.map((site, index) => ({
           id: `existing-${index + 1}`,
-          latitude: site.latitude,
-          longitude: site.longitude,
+          latitude: Number(site.latitude),
+          longitude: Number(site.longitude),
           assignedCustomers: [],
           totalDemand: 0,
           nearestCity: site.name || 'Existing Site',
@@ -500,8 +500,8 @@ export function optimizeWithConstraints(
         // Combine existing sites with new sites
         const existingDcs: DistributionCenter[] = existingSites.map((site, index) => ({
           id: `existing-${index + 1}`,
-          latitude: site.latitude,
-          longitude: site.longitude,
+          latitude: Number(site.latitude),
+          longitude: Number(site.longitude),
           assignedCustomers: [],
           totalDemand: 0,
           nearestCity: site.name || 'Existing Site',
@@ -553,7 +553,12 @@ export function optimizeWithConstraints(
         let minDist = 50; // 50km threshold
         
         existingSites.forEach(site => {
-          const dist = haversineDistance(dc.latitude, dc.longitude, site.latitude, site.longitude);
+          const dist = haversineDistance(
+            dc.latitude, 
+            dc.longitude, 
+            Number(site.latitude), 
+            Number(site.longitude)
+          );
           if (dist < minDist) {
             minDist = dist;
             closestExisting = site;
@@ -563,8 +568,8 @@ export function optimizeWithConstraints(
         if (closestExisting) {
           return {
             ...dc,
-            latitude: closestExisting.latitude,
-            longitude: closestExisting.longitude,
+            latitude: Number(closestExisting.latitude),
+            longitude: Number(closestExisting.longitude),
             nearestCity: closestExisting.name
           };
         }
