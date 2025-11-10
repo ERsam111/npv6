@@ -298,13 +298,13 @@ export function ResultsPanel({
                   <div>
                     <span className="text-muted-foreground">Latitude:</span>
                     <span className="ml-1 font-mono">
-                      {dc.latitude.toFixed(4)}
+                      {typeof dc.latitude === 'number' ? dc.latitude.toFixed(4) : dc.latitude}
                     </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Longitude:</span>
                     <span className="ml-1 font-mono">
-                      {dc.longitude.toFixed(4)}
+                      {typeof dc.longitude === 'number' ? dc.longitude.toFixed(4) : dc.longitude}
                     </span>
                   </div>
                 </div>
