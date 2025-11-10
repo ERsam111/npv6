@@ -9,19 +9,21 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { TableColumnFilter, ColumnFilter, SortDirection, applyColumnFilter, applySorting } from "@/components/ui/table-column-filter";
 interface GFAEditableTableProps {
-  tableType: "customers" | "products";
+  tableType: "customers" | "products" | "existing-sites";
   data: any[];
   onDataChange: (data: any[]) => void;
   onGeocode?: (index: number) => void;
 }
 const getTableTitle = (type: string) => ({
   customers: "Customers",
-  products: "Products"
+  products: "Products",
+  "existing-sites": "Existing Sites"
 })[type] || type;
 const getTableColumns = (tableType: string): string[] => {
   const map: Record<string, string[]> = {
     customers: ["Customer Name", "City", "Country", "Latitude", "Longitude", "Product", "Demand", "Unit of Measure"],
-    products: ["Product Name", "Base Unit", "Selling Price", "Unit Conversions"]
+    products: ["Product Name", "Base Unit", "Selling Price", "Unit Conversions"],
+    "existing-sites": ["Site Name", "City", "Country", "Latitude", "Longitude", "Capacity", "Capacity Unit"]
   };
   return map[tableType] || ["Name"];
 };
@@ -48,6 +50,17 @@ const keyOf = (label: string, tableType: string) => {
       "Unit Conversions": "unitConversions"
     };
     return productKeyMap[label] || label.toLowerCase().replace(/[\s]+/g, "_");
+  } else if (tableType === "existing-sites") {
+    const existingSiteKeyMap: Record<string, string> = {
+      "Site Name": "name",
+      "City": "city",
+      "Country": "country",
+      "Latitude": "latitude",
+      "Longitude": "longitude",
+      "Capacity": "capacity",
+      "Capacity Unit": "capacityUnit"
+    };
+    return existingSiteKeyMap[label] || label.toLowerCase().replace(/[\s]+/g, "_");
   }
   return label.toLowerCase().replace(/[\s]+/g, "_");
 };
@@ -72,6 +85,11 @@ export function GFAEditableTable({
         if (key === "unitConversions") newRow[key] = [];else newRow[key] = "";
       } else if (tableType === "customers") {
         if (key === "id") newRow[key] = `customer-${Date.now()}`;else if (key === "latitude" || key === "longitude" || key === "demand") newRow[key] = 0;else if (key === "unitOfMeasure") newRow[key] = "m3";else newRow[key] = "";
+      } else if (tableType === "existing-sites") {
+        if (key === "id") newRow[key] = `site-${Date.now()}`;
+        else if (key === "latitude" || key === "longitude" || key === "capacity") newRow[key] = 0;
+        else if (key === "capacityUnit") newRow[key] = "m3";
+        else newRow[key] = "";
       } else {
         newRow[key] = "";
       }

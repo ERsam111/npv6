@@ -26,6 +26,17 @@ export interface Customer {
   conversionFactor: number; // conversion to standard unit (m3)
 }
 
+export interface ExistingSite {
+  id: string;
+  name: string;
+  city: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  capacity: number; // capacity in standard units (m3)
+  capacityUnit: string;
+}
+
 export interface DistributionCenter {
   id: string;
   latitude: number;
@@ -47,6 +58,8 @@ export interface OptimizationSettings {
   facilityCost: number; // cost to open one site
   distanceUnit: 'km' | 'mile'; // unit for transportation cost
   costUnit: string; // unit for cost calculation (kg, ton, m3, pallet, etc.)
+  includeExistingSites: boolean; // whether to include existing sites in analysis
+  existingSitesMode: 'potential' | 'always'; // 'potential' = compete with new sites, 'always' = always included
 }
 
 export interface CostBreakdown {

@@ -9,6 +9,7 @@ interface GFASidebarNavProps {
   onTableSelect: (table: string) => void;
   customerCount: number;
   productCount: number;
+  existingSiteCount: number;
 }
 
 const SECTIONS = [
@@ -18,6 +19,7 @@ const SECTIONS = [
     items: [
       { id: "customers", label: "Customers & Demand" },
       { id: "products", label: "Products" },
+      { id: "existing-sites", label: "Existing Sites" },
     ],
   },
   {
@@ -27,13 +29,14 @@ const SECTIONS = [
   },
 ];
 
-export function GFASidebarNav({ activeTable, onTableSelect, customerCount, productCount }: GFASidebarNavProps) {
+export function GFASidebarNav({ activeTable, onTableSelect, customerCount, productCount, existingSiteCount }: GFASidebarNavProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSections, setExpandedSections] = useState<string[]>(["data", "settings"]);
 
   const getCounts = (itemId: string) => {
     if (itemId === "customers") return customerCount;
     if (itemId === "products") return productCount;
+    if (itemId === "existing-sites") return existingSiteCount;
     return 0;
   };
 

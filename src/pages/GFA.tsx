@@ -4,7 +4,7 @@ import { ArrowLeft, Play, MapPin, BarChart3, TrendingUp, Upload, Download, Messa
 import { useNavigate, useLocation } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Customer, DistributionCenter, OptimizationSettings, Product } from "@/types/gfa";
+import { Customer, DistributionCenter, OptimizationSettings, Product, ExistingSite } from "@/types/gfa";
 import { optimizeWithConstraints } from "@/utils/geoCalculations";
 import { exportReport } from "@/utils/exportReport";
 import { toast } from "sonner";
@@ -55,6 +55,7 @@ const GFA = () => {
   }, [location.state, projects]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [existingSites, setExistingSites] = useState<ExistingSite[]>([]);
   const [dcs, setDcs] = useState<DistributionCenter[]>([]);
   const [feasible, setFeasible] = useState(true);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -74,7 +75,9 @@ const GFA = () => {
     transportationCostPerMilePerUnit: 0.5,
     facilityCost: 100000,
     distanceUnit: 'km',
-    costUnit: 'm3'
+    costUnit: 'm3',
+    includeExistingSites: false,
+    existingSitesMode: 'potential'
   });
 
   // Load scenario data when scenario is selected
@@ -86,6 +89,7 @@ const GFA = () => {
         if (inputData) {
           setCustomers(inputData.customers || []);
           setProducts(inputData.products || []);
+          setExistingSites(inputData.existingSites || []);
           setSettings(inputData.settings || settings);
         }
 
@@ -107,17 +111,18 @@ const GFA = () => {
 
   // Save input data whenever it changes
   useEffect(() => {
-    if (currentScenario && (customers.length > 0 || products.length > 0)) {
+    if (currentScenario && (customers.length > 0 || products.length > 0 || existingSites.length > 0)) {
       const saveData = async () => {
         await saveScenarioInput(currentScenario.id, {
           customers,
           products,
+          existingSites,
           settings
         }, true); // Background save, non-blocking
       };
       saveData();
     }
-  }, [customers, products, settings, currentScenario?.id]);
+  }, [customers, products, existingSites, settings, currentScenario?.id]);
 
   // Extract unique products from customers - auto-populate
   useEffect(() => {
@@ -227,6 +232,7 @@ const GFA = () => {
   const handleClearData = () => {
     setCustomers([]);
     setProducts([]);
+    setExistingSites([]);
     setDcs([]);
     toast.success("All data cleared successfully");
   };
@@ -284,7 +290,13 @@ const GFA = () => {
 
           <TabsContent value="input" className="space-y-6">
             <div className="flex gap-4 h-[calc(100vh-300px)] overflow-hidden">
-              <GFASidebarNav activeTable={activeTable} onTableSelect={setActiveTable} customerCount={customers.length} productCount={products.length} />
+              <GFASidebarNav 
+                activeTable={activeTable} 
+                onTableSelect={setActiveTable} 
+                customerCount={customers.length} 
+                productCount={products.length}
+                existingSiteCount={existingSites.length}
+              />
               <div className="flex-1 min-w-0 flex flex-col gap-4 max-w-[calc(100vw-400px)]">
                 {/* Compact Upload Section */}
                 <Card className="shadow-sm shrink-0">
@@ -304,6 +316,7 @@ const GFA = () => {
                 <div className="flex-1 min-w-0 overflow-hidden">
                   {activeTable === "customers" && <GFAEditableTable tableType="customers" data={customers} onDataChange={setCustomers} onGeocode={handleGeocodeCustomer} />}
                   {activeTable === "products" && <GFAEditableTable tableType="products" data={products} onDataChange={setProducts} />}
+                  {activeTable === "existing-sites" && <GFAEditableTable tableType="existing-sites" data={existingSites} onDataChange={setExistingSites} />}
                   {activeTable === "costs" && <GFACostParametersPanel settings={settings} onSettingsChange={setSettings} />}
                 </div>
               </div>
@@ -325,7 +338,14 @@ const GFA = () => {
           </TabsContent>
 
           <TabsContent value="optimization" className="space-y-6">
-            <GFAOptimizationPanel customers={customers} products={products} settings={settings} onSettingsChange={setSettings} onOptimize={handleOptimize} />
+            <GFAOptimizationPanel 
+              customers={customers} 
+              products={products} 
+              existingSites={existingSites}
+              settings={settings} 
+              onSettingsChange={setSettings} 
+              onOptimize={handleOptimize} 
+            />
           </TabsContent>
 
           <TabsContent value="results" className="space-y-6">
