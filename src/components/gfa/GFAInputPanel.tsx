@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, Trash2 } from "lucide-react";
-import { Customer, Product, OptimizationSettings } from "@/types/gfa";
+import { Customer, Product, OptimizationSettings, ExistingSite } from "@/types/gfa";
 import { ExcelUpload } from "./ExcelUpload";
 import { GFAEditableTable } from "./GFAEditableTable";
 import { CostParameters } from "./CostParameters";
@@ -21,18 +21,22 @@ import { toast } from "sonner";
 interface GFAInputPanelProps {
   customers: Customer[];
   products: Product[];
+  existingSites: ExistingSite[];
   settings: OptimizationSettings;
   onCustomersChange: (customers: Customer[]) => void;
   onProductsChange: (products: Product[]) => void;
+  onExistingSitesChange: (sites: ExistingSite[]) => void;
   onSettingsChange: (settings: OptimizationSettings) => void;
 }
 
 export function GFAInputPanel({
   customers,
   products,
+  existingSites,
   settings,
   onCustomersChange,
   onProductsChange,
+  onExistingSitesChange,
   onSettingsChange,
 }: GFAInputPanelProps) {
   // Use the same min width for BOTH tables so they align and scroll independently.
@@ -117,7 +121,26 @@ export function GFAInputPanel({
           </div>
         </CardHeader>
         <CardContent className="pt-2 px-3 pb-3">
-          <ExcelUpload onBulkUpload={handleBulkUpload} />
+          <ExcelUpload 
+            onBulkUpload={handleBulkUpload}
+            onProductsUpload={(products, mode) => {
+              if (mode === 'overwrite') {
+                onProductsChange(products);
+              } else {
+                onProductsChange([...products, ...products]);
+              }
+            }}
+            onExistingSitesUpload={(sites, mode) => {
+              if (mode === 'overwrite') {
+                onExistingSitesChange(sites);
+              } else {
+                onExistingSitesChange([...existingSites, ...sites]);
+              }
+            }}
+            onCostParametersUpload={(params) => {
+              onSettingsChange({ ...settings, ...params });
+            }}
+          />
         </CardContent>
       </Card>
 

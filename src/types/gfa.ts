@@ -7,10 +7,10 @@ export interface UnitConversion {
 
 export interface Product {
   name: string;
-  baseUnit: string; // The unit used in customer demand data
-  conversionToStandard: number; // Conversion factor to standard unit (m3) for capacity calculations
-  unitConversions: UnitConversion[]; // Additional unit conversions for this product
-  sellingPrice?: number; // Selling price per unit
+  baseUnit: string; // The baseline unit for this product
+  sellingPrice?: number; // Selling price per base unit
+  // Dynamic unit conversions - column names are unit names, values are conversion factors to m3
+  [key: string]: string | number | undefined;
 }
 
 export interface Customer {

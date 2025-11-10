@@ -2,123 +2,285 @@ import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, Download } from "lucide-react";
-import { Customer } from "@/types/gfa";
+import { Customer, Product, ExistingSite, OptimizationSettings } from "@/types/gfa";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { getConversionFactor } from "@/utils/unitConversions";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+
 interface ExcelUploadProps {
   onBulkUpload: (customers: Customer[], mode: 'append' | 'overwrite') => void;
+  onProductsUpload?: (products: Product[], mode: 'append' | 'overwrite') => void;
+  onExistingSitesUpload?: (sites: ExistingSite[], mode: 'append' | 'overwrite') => void;
+  onCostParametersUpload?: (settings: Partial<OptimizationSettings>) => void;
 }
 export function ExcelUpload({
-  onBulkUpload
+  onBulkUpload,
+  onProductsUpload,
+  onExistingSitesUpload,
+  onCostParametersUpload
 }: ExcelUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadMode, setUploadMode] = useState<'append' | 'overwrite'>('append');
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = async e => {
+    reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, {
-          type: "array"
-        });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        const customers: Customer[] = [];
-        let errors = 0;
-        jsonData.forEach((row: any, index: number) => {
-          try {
-            // Support multiple column name variations
-            const product = row.Product || row.product || row.PRODUCT || "";
-            const name = row.Name || row.name || row.NAME || row["Customer Name"] || "";
+        const workbook = XLSX.read(data, { type: "array" });
+
+        // Process Customers sheet
+        const customersSheet = workbook.Sheets["Customers"] || workbook.Sheets[workbook.SheetNames[0]];
+        if (customersSheet) {
+          const customersData = XLSX.utils.sheet_to_json(customersSheet);
+          const customers: Customer[] = [];
+          let errors = 0;
+
+          customersData.forEach((row: any, index: number) => {
+            try {
+              const product = row.Product || row.product || row.PRODUCT || "";
+              const name = row.Name || row.name || row.NAME || row["Customer Name"] || "";
+              const city = row.City || row.city || row.CITY || "";
+              const country = row.Country || row.country || row.COUNTRY || "";
+              const unitOfMeasure = row.Unit || row.unit || row.UNIT || row.UOM || row.uom || "m3";
+              const latitude = parseFloat(row.Latitude || row.latitude || row.LATITUDE || row.Lat || row.lat);
+              const longitude = parseFloat(row.Longitude || row.longitude || row.LONGITUDE || row.Lng || row.lng || row.Long || row.long);
+              const demand = parseFloat(row.Demand || row.demand || row.DEMAND);
+
+              if (!product || !name || !city || !country) {
+                errors++;
+                return;
+              }
+
+              if (isNaN(latitude) || isNaN(longitude) || isNaN(demand)) {
+                errors++;
+                return;
+              }
+
+              if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+                errors++;
+                return;
+              }
+
+              if (demand <= 0) {
+                errors++;
+                return;
+              }
+
+              customers.push({
+                id: `customer-${Date.now()}-${index}`,
+                product: product.toString().trim(),
+                name: name.toString().trim(),
+                city: city.toString().trim(),
+                country: country.toString().trim(),
+                latitude,
+                longitude,
+                demand,
+                unitOfMeasure: unitOfMeasure.toString().trim(),
+                conversionFactor: getConversionFactor(unitOfMeasure.toString().trim()),
+              });
+            } catch (err) {
+              errors++;
+            }
+          });
+
+          if (customers.length > 0) {
+            onBulkUpload(customers, uploadMode);
+            const action = uploadMode === 'overwrite' ? 'Replaced with' : 'Added';
+            toast.success(`${action} ${customers.length} customers${errors > 0 ? ` (${errors} rows skipped)` : ""}`);
+          }
+        }
+
+        // Process Products sheet
+        if (workbook.Sheets["Products"] && onProductsUpload) {
+          const productsData = XLSX.utils.sheet_to_json(workbook.Sheets["Products"]);
+          const products: Product[] = [];
+
+          productsData.forEach((row: any) => {
+            const name = row.Product || row.product || row.PRODUCT || row.Name || row.name;
+            const baseUnit = row.BaseUnit || row["Base Unit"] || row.baseUnit || row.Unit || "m3";
+            const sellingPrice = parseFloat(row.SellingPrice || row["Selling Price"] || row.sellingPrice || row.Price || "0");
+
+            if (!name) return;
+
+            const product: Product = {
+              name: name.toString().trim(),
+              baseUnit: baseUnit.toString().trim(),
+              sellingPrice: sellingPrice > 0 ? sellingPrice : undefined,
+            };
+
+            // Add all unit conversion columns (any column that's not the core fields and has a numeric value)
+            Object.keys(row).forEach((key) => {
+              if (!['Product', 'product', 'PRODUCT', 'Name', 'name', 'BaseUnit', 'Base Unit', 'baseUnit', 'Unit', 'SellingPrice', 'Selling Price', 'sellingPrice', 'Price'].includes(key)) {
+                const value = parseFloat(row[key]);
+                if (!isNaN(value) && value > 0) {
+                  product[key] = value;
+                }
+              }
+            });
+
+            products.push(product);
+          });
+
+          if (products.length > 0) {
+            onProductsUpload(products, uploadMode);
+            toast.success(`Imported ${products.length} products`);
+          }
+        }
+
+        // Process Existing Sites sheet
+        if (workbook.Sheets["Existing Sites"] && onExistingSitesUpload) {
+          const sitesData = XLSX.utils.sheet_to_json(workbook.Sheets["Existing Sites"]);
+          const sites: ExistingSite[] = [];
+
+          sitesData.forEach((row: any, index: number) => {
+            const name = row.Name || row.name || row.NAME || row.Site || row.site;
             const city = row.City || row.city || row.CITY || "";
             const country = row.Country || row.country || row.COUNTRY || "";
-            const unitOfMeasure = row.Unit || row.unit || row.UNIT || row.UOM || row.uom || "m3";
             const latitude = parseFloat(row.Latitude || row.latitude || row.LATITUDE || row.Lat || row.lat);
-            const longitude = parseFloat(row.Longitude || row.longitude || row.LONGITUDE || row.Lng || row.lng || row.Long || row.long);
-            const demand = parseFloat(row.Demand || row.demand || row.DEMAND);
-            if (!product || !name || !city || !country) {
-              errors++;
-              return;
-            }
-            if (isNaN(latitude) || isNaN(longitude) || isNaN(demand)) {
-              errors++;
-              return;
-            }
-            if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-              errors++;
-              return;
-            }
-            if (demand <= 0) {
-              errors++;
-              return;
-            }
-            customers.push({
-              id: `customer-${Date.now()}-${index}`,
-              product: product.toString().trim(),
+            const longitude = parseFloat(row.Longitude || row.longitude || row.LONGITUDE || row.Lng || row.lng);
+            const capacity = parseFloat(row.Capacity || row.capacity || row.CAPACITY);
+            const capacityUnit = row.CapacityUnit || row["Capacity Unit"] || row.capacityUnit || row.Unit || "m3";
+
+            if (!name || isNaN(latitude) || isNaN(longitude) || isNaN(capacity)) return;
+            if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return;
+
+            sites.push({
+              id: `site-${Date.now()}-${index}`,
               name: name.toString().trim(),
               city: city.toString().trim(),
               country: country.toString().trim(),
               latitude,
               longitude,
-              demand,
-              unitOfMeasure: unitOfMeasure.toString().trim(),
-              conversionFactor: getConversionFactor(unitOfMeasure.toString().trim())
+              capacity,
+              capacityUnit: capacityUnit.toString().trim(),
             });
-          } catch (err) {
-            errors++;
+          });
+
+          if (sites.length > 0) {
+            onExistingSitesUpload(sites, uploadMode);
+            toast.success(`Imported ${sites.length} existing sites`);
           }
-        });
-        if (customers.length > 0) {
-          onBulkUpload(customers, uploadMode);
-          const action = uploadMode === 'overwrite' ? 'Replaced with' : 'Added';
-          toast.success(`${action} ${customers.length} customers${errors > 0 ? ` (${errors} rows skipped due to errors)` : ""}`);
-        } else {
-          toast.error("No valid customer data found in the file");
+        }
+
+        // Process Cost Parameters sheet
+        if (workbook.Sheets["Cost Parameters"] && onCostParametersUpload) {
+          const costData = XLSX.utils.sheet_to_json(workbook.Sheets["Cost Parameters"]);
+          if (costData.length > 0) {
+            const row: any = costData[0];
+            const settings: Partial<OptimizationSettings> = {};
+
+            const transportCost = parseFloat(row.TransportationCostPerMilePerUnit || row.transportationCostPerMilePerUnit || row["Transportation Cost"] || "0");
+            const facilityCost = parseFloat(row.FacilityCost || row.facilityCost || row["Facility Cost"] || "0");
+            const distanceUnit = (row.DistanceUnit || row.distanceUnit || row["Distance Unit"] || "km").toString().toLowerCase();
+            const costUnit = (row.CostUnit || row.costUnit || row["Cost Unit"] || "m3").toString().trim();
+
+            if (transportCost > 0) settings.transportationCostPerMilePerUnit = transportCost;
+            if (facilityCost > 0) settings.facilityCost = facilityCost;
+            if (distanceUnit === 'km' || distanceUnit === 'mile') settings.distanceUnit = distanceUnit as 'km' | 'mile';
+            if (costUnit) settings.costUnit = costUnit;
+
+            if (Object.keys(settings).length > 0) {
+              onCostParametersUpload(settings);
+              toast.success("Imported cost parameters");
+            }
+          }
+        }
+
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
         }
       } catch (error) {
+        console.error("Excel upload error:", error);
         toast.error("Failed to parse Excel file. Please check the format.");
-      }
-
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
       }
     };
     reader.readAsArrayBuffer(file);
   };
   const downloadTemplate = () => {
-    const template = [{
-      Product: "Electronics",
-      Name: "Customer A",
-      PostalCode: "10001",
-      City: "New York",
-      Country: "USA",
-      Latitude: 40.7128,
-      Longitude: -74.0060,
-      Demand: 1000,
-      Unit: "pallets"
-    }, {
-      Product: "Furniture",
-      Name: "Customer B",
-      PostalCode: "90001",
-      City: "Los Angeles",
-      Country: "USA",
-      Latitude: 34.0522,
-      Longitude: -118.2437,
-      Demand: 1500,
-      Unit: "m3"
-    }];
-    const worksheet = XLSX.utils.json_to_sheet(template);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
-    XLSX.writeFile(workbook, "customer_data_template.xlsx");
-    toast.success("Template downloaded successfully");
+
+    // Sheet 1: Customers
+    const customersTemplate = [
+      {
+        Product: "Electronics",
+        Name: "Customer A",
+        City: "New York",
+        Country: "USA",
+        Latitude: 40.7128,
+        Longitude: -74.0060,
+        Demand: 1000,
+        Unit: "pallets"
+      },
+      {
+        Product: "Furniture",
+        Name: "Customer B",
+        City: "Los Angeles",
+        Country: "USA",
+        Latitude: 34.0522,
+        Longitude: -118.2437,
+        Demand: 1500,
+        Unit: "m3"
+      }
+    ];
+    const customersSheet = XLSX.utils.json_to_sheet(customersTemplate);
+    XLSX.utils.book_append_sheet(workbook, customersSheet, "Customers");
+
+    // Sheet 2: Products
+    const productsTemplate = [
+      {
+        Product: "Electronics",
+        BaseUnit: "pallets",
+        SellingPrice: 500,
+        "to_m3": 1.2,
+        "to_ft3": 42.4,
+        "to_kg": "",
+      },
+      {
+        Product: "Furniture",
+        BaseUnit: "m3",
+        SellingPrice: 300,
+        "to_m3": 1,
+        "to_ft3": 35.3,
+        "to_pallets": 0.83,
+      }
+    ];
+    const productsSheet = XLSX.utils.json_to_sheet(productsTemplate);
+    XLSX.utils.book_append_sheet(workbook, productsSheet, "Products");
+
+    // Sheet 3: Existing Sites
+    const sitesTemplate = [
+      {
+        Name: "Warehouse NYC",
+        City: "New York",
+        Country: "USA",
+        Latitude: 40.7580,
+        Longitude: -73.9855,
+        Capacity: 50000,
+        CapacityUnit: "m3"
+      }
+    ];
+    const sitesSheet = XLSX.utils.json_to_sheet(sitesTemplate);
+    XLSX.utils.book_append_sheet(workbook, sitesSheet, "Existing Sites");
+
+    // Sheet 4: Cost Parameters
+    const costTemplate = [
+      {
+        TransportationCostPerMilePerUnit: 0.5,
+        FacilityCost: 100000,
+        DistanceUnit: "km",
+        CostUnit: "m3"
+      }
+    ];
+    const costSheet = XLSX.utils.json_to_sheet(costTemplate);
+    XLSX.utils.book_append_sheet(workbook, costSheet, "Cost Parameters");
+
+    XLSX.writeFile(workbook, "gfa_data_template.xlsx");
+    toast.success("Template downloaded with 4 sheets");
   };
   return <Card className="shadow-lg">
       <CardHeader>
@@ -162,16 +324,12 @@ export function ExcelUpload({
         </div>
 
         <div className="text-sm text-muted-foreground space-y-2">
-          <p className="font-medium">Required columns:</p>
+          <p className="font-medium">Template includes 4 sheets:</p>
           <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Product</li>
-            <li>Name (Customer Name)</li>
-            <li>City</li>
-            <li>Country</li>
-            <li>Latitude</li>
-            <li>Longitude</li>
-            <li>Demand</li>
-            <li>Unit (e.g., pallets, m3, kg)</li>
+            <li>Customers - customer demand data</li>
+            <li>Products - product units & conversions</li>
+            <li>Existing Sites - current facilities</li>
+            <li>Cost Parameters - optimization settings</li>
           </ul>
         </div>
       </CardContent>
