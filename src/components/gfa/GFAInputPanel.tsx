@@ -206,7 +206,143 @@ export function GFAInputPanel({
         </CardContent>
       </Card>
 
-      {/* Section 6: Cost Parameters */}
+      {/* Section 1: Customers */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2 pt-3 px-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-1.5 text-sm">
+                <Users className="h-3.5 w-3.5" />
+                1. Customers
+              </CardTitle>
+              <CardDescription className="text-[11px]">Customer locations and details</CardDescription>
+            </div>
+            {uniqueCustomers.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="gap-1.5 h-7 text-[11px]">
+                    <Trash2 className="h-3 w-3" />
+                    Clear
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear all customers?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove all customer location data.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearCustomers}>Clear</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-2 px-3 pb-3">
+          <CustomerTable
+            customers={uniqueCustomers}
+            onAddCustomer={handleAddCustomerLocation}
+            onRemoveCustomer={handleRemoveCustomerLocation}
+            onUpdateCustomer={handleUpdateCustomerLocation}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Section 2: Demand */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2 pt-3 px-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-1.5 text-sm">
+                <TrendingUp className="h-3.5 w-3.5" />
+                2. Demand
+              </CardTitle>
+              <CardDescription className="text-[11px]">Product demand by customer</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-2 px-3 pb-3">
+          <DemandTable
+            demands={customers.filter(c => c.product).map(c => ({
+              id: c.id,
+              customerId: c.id,
+              customerName: c.name,
+              product: c.product,
+              quantity: c.demand,
+              unitOfMeasure: c.unitOfMeasure,
+              conversionFactor: c.conversionFactor,
+            }))}
+            customers={uniqueCustomers}
+            products={products}
+            onAddDemand={handleAddDemand}
+            onRemoveDemand={(id) => {
+              const updatedCustomers = customers.filter(c => c.id !== id);
+              onCustomersChange(updatedCustomers);
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Section 3: Products */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2 pt-3 px-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm">3. Products</CardTitle>
+              <CardDescription className="text-[11px]">Product catalog and attributes</CardDescription>
+            </div>
+            {products.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="gap-1.5 h-7 text-[11px]">
+                    <Trash2 className="h-3 w-3" />
+                    Clear
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear all products?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove all product data.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearProducts}>Clear</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-2 px-3 pb-3">
+          <GFAEditableTable
+            tableType="products"
+            data={products}
+            onDataChange={(data) => onProductsChange(data as Product[])}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Section 4: Existing Sites */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2 pt-3 px-3">
+          <CardTitle className="text-sm">4. Existing Sites</CardTitle>
+          <CardDescription className="text-[11px]">Optional existing facility locations</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-2 px-3 pb-3">
+          <GFAEditableTable
+            tableType="existing-sites"
+            data={existingSites}
+            onDataChange={(data) => onExistingSitesChange(data as ExistingSite[])}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Section 5: Cost Parameters */}
       <Card className="shadow-sm">
         <CardHeader className="pb-2 pt-3 px-3">
           <CardTitle className="text-sm">5. Cost Parameters</CardTitle>
