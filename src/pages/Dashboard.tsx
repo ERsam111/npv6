@@ -82,8 +82,8 @@ const Dashboard = () => {
       <div className="relative overflow-hidden border-b">
         <div className="absolute inset-0 bg-gradient-to-r from-gfa/5 via-forecasting/5 to-inventory/5" />
         <div className="relative px-4 py-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-end gap-6">
+          <div className="max-w-[1600px] mx-auto w-full">
+            <div className="flex items-center justify-end gap-8">
               <div className="text-right">
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gfa via-forecasting to-inventory bg-clip-text text-transparent">
                   JCG Supply Chain Optimization
