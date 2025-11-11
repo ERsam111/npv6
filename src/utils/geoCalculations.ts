@@ -56,9 +56,10 @@ export interface DistributionCenter {
 }
 
 /**
- * Calculate center of gravity for a set of customers
+ * Calculate geodesic centroid (Weber point) using iterative optimization
+ * This minimizes the sum of weighted geodesic distances, which is more accurate than center of gravity
  */
-export function calculateCenterOfGravity(customers: Customer[]): {
+export function calculateGeodesicCentroid(customers: Customer[]): {
   latitude: number;
   longitude: number;
 } {
@@ -66,21 +67,56 @@ export function calculateCenterOfGravity(customers: Customer[]): {
     return { latitude: 0, longitude: 0 };
   }
 
+  if (customers.length === 1) {
+    return { latitude: customers[0].latitude, longitude: customers[0].longitude };
+  }
+
+  // Start with simple center of gravity as initial estimate
   const totalDemand = customers.reduce((sum, c) => sum + c.demand, 0);
+  let lat = customers.reduce((sum, c) => sum + c.latitude * c.demand, 0) / totalDemand;
+  let lon = customers.reduce((sum, c) => sum + c.longitude * c.demand, 0) / totalDemand;
 
-  const weightedLat = customers.reduce(
-    (sum, c) => sum + c.latitude * c.demand,
-    0
-  );
-  const weightedLon = customers.reduce(
-    (sum, c) => sum + c.longitude * c.demand,
-    0
-  );
+  // Iterative optimization using modified Weiszfeld algorithm for geodesic distances
+  const maxIterations = 100;
+  const tolerance = 0.0001; // degrees
 
-  return {
-    latitude: weightedLat / totalDemand,
-    longitude: weightedLon / totalDemand,
-  };
+  for (let iter = 0; iter < maxIterations; iter++) {
+    let numeratorLat = 0;
+    let numeratorLon = 0;
+    let denominator = 0;
+
+    for (const customer of customers) {
+      const distance = haversineDistance(lat, lon, customer.latitude, customer.longitude);
+      
+      // Avoid division by zero
+      if (distance < 0.001) {
+        // If we're very close to a customer, just use that customer's location
+        return { latitude: customer.latitude, longitude: customer.longitude };
+      }
+
+      // Weight by demand / distance (Weiszfeld weights)
+      const weight = customer.demand / distance;
+      
+      numeratorLat += weight * customer.latitude;
+      numeratorLon += weight * customer.longitude;
+      denominator += weight;
+    }
+
+    const newLat = numeratorLat / denominator;
+    const newLon = numeratorLon / denominator;
+
+    // Check convergence
+    const change = Math.sqrt(Math.pow(newLat - lat, 2) + Math.pow(newLon - lon, 2));
+    
+    lat = newLat;
+    lon = newLon;
+
+    if (change < tolerance) {
+      break;
+    }
+  }
+
+  return { latitude: lat, longitude: lon };
 }
 
 /**
@@ -153,11 +189,11 @@ export function kMeansOptimization(
       nearestDC.totalDemand += customer.demand * customer.conversionFactor;
     });
 
-    // Recalculate DC positions (center of gravity of assigned customers)
+    // Recalculate DC positions using geodesic centroid (optimizes for true geodesic distances)
     let converged = true;
     dcs.forEach(dc => {
       if (dc.assignedCustomers.length > 0) {
-        const newCenter = calculateCenterOfGravity(dc.assignedCustomers);
+        const newCenter = calculateGeodesicCentroid(dc.assignedCustomers);
         const movement = haversineDistance(
           dc.latitude,
           dc.longitude,
@@ -477,13 +513,11 @@ export function optimizeWithCost(
       products
     );
 
-    // Count DCs that correspond to existing *already-open* sites.
-    // Rule: IN ANY SCENARIO, don't consider opening cost for already-open sites.
-    // In 'always' mode, treat all included existing as already-open.
+    // Count DCs that correspond to existing sites.
+    // In 'always' mode, treat all existing sites as already open (no facility cost)
+    // In 'potential' mode, existing sites compete with new sites (no facility cost for matched existing)
     const existingMatchesCount = dcs.filter(dc => {
-      const matched = matchExistingSite(dc, existingSites);
-      if (!matched) return false;
-      return existingSitesMode === 'always' || matched.alreadyOpen === true;
+      return matchExistingSite(dc, existingSites) !== undefined;
     }).length;
 
     // New (greenfield) sites are those not matched to an already-open site
