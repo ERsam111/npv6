@@ -216,10 +216,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="relative overflow-hidden border-t bg-gradient-to-br from-background via-gfa-green/5 to-network-blue/5">
-        <div className="absolute top-40 left-20 w-64 h-64 bg-gradient-to-br from-inventory-orange/10 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-gradient-to-br from-forecasting-purple/10 to-transparent rounded-full blur-3xl" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
             <Brain className="h-4 w-4" />
@@ -270,7 +267,6 @@ const Index = () => {
                 </CardContent>
               </Card>;
         })}
-        </div>
         </div>
       </section>
 
@@ -354,10 +350,7 @@ const Index = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="relative overflow-hidden border-t bg-gradient-to-br from-network-blue/5 via-background to-inventory-orange/5">
-        <div className="absolute top-20 right-20 w-72 h-72 bg-gradient-to-br from-forecasting-purple/15 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-gradient-to-br from-production-teal/15 to-transparent rounded-full blur-3xl" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">Success Stories</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -395,17 +388,14 @@ const Index = () => {
               </CardContent>
             </Card>)}
         </div>
-        </div>
       </section>
 
       {/* FAQ Section / Pricing Info */}
       <section id="pricing" className="relative border-t overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-inventory-orange/10 via-gfa-green/5 to-forecasting-purple/10" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-network-blue/20 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gradient-to-br from-transport-indigo/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-bl from-transport-indigo/5 via-background to-production-teal/5" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-gfa-green via-forecasting-purple to-network-blue bg-clip-text text-transparent">Frequently Asked Questions</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Frequently Asked Questions</h2>
             <p className="text-lg text-muted-foreground">
               Everything you need to know about our platform
             </p>
@@ -483,114 +473,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Contact Form Section */}
-      <section id="contact" className="relative overflow-hidden border-t">
-        <div className="absolute inset-0 bg-gradient-to-br from-forecasting-purple/15 via-network-blue/10 to-gfa-green/15" />
-        <div className="absolute inset-0 opacity-30" style={{
-          background: 'radial-gradient(circle at 30% 50%, hsl(270 65% 55% / 0.25) 0%, transparent 50%), radial-gradient(circle at 70% 50%, hsl(220 85% 55% / 0.25) 0%, transparent 50%)'
-        }} />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-                <Mail className="h-4 w-4" />
-                <span>Get in Touch</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-                Let's Optimize Your Supply Chain
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                Have questions? Want to see a demo? Our team is here to help you transform your operations.
-              </p>
-            </div>
-
-            <Card className="border-2 shadow-2xl bg-card/80 backdrop-blur-sm">
-              <CardContent className="p-8">
-                <form className="space-y-6" onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  console.log({
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    company: formData.get('company'),
-                    message: formData.get('message')
-                  });
-                  alert('Thank you for your message! We\'ll get back to you soon.');
-                  e.currentTarget.reset();
-                }}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label htmlFor="name" className="text-sm font-medium">
-                        Full Name *
-                      </label>
-                      <input
-                        id="name"
-                        name="name"
-                        type="text"
-                        required
-                        className="flex h-12 w-full rounded-lg border border-input bg-background/50 px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all"
-                        placeholder="John Doe"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label htmlFor="email" className="text-sm font-medium">
-                        Email Address *
-                      </label>
-                      <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        required
-                        className="flex h-12 w-full rounded-lg border border-input bg-background/50 px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all"
-                        placeholder="john@company.com"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="company" className="text-sm font-medium">
-                      Company Name
-                    </label>
-                    <input
-                      id="company"
-                      name="company"
-                      type="text"
-                      className="flex h-12 w-full rounded-lg border border-input bg-background/50 px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all"
-                      placeholder="Your Company"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="message" className="text-sm font-medium">
-                      Message *
-                    </label>
-                    <textarea
-                      id="message"
-                      name="message"
-                      required
-                      rows={5}
-                      className="flex w-full rounded-lg border border-input bg-background/50 px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all resize-none"
-                      placeholder="Tell us about your supply chain challenges..."
-                    />
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    className="w-full text-base shadow-lg hover:shadow-xl transition-all"
-                  >
-                    Send Message
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="border-t bg-gradient-to-br from-primary via-secondary to-primary bg-[#1b9da4]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
@@ -612,12 +494,9 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative overflow-hidden border-t bg-gradient-to-br from-gfa-green/5 via-background to-network-blue/5">
-        <div className="absolute inset-0 opacity-20" style={{
-          background: 'radial-gradient(circle at 20% 80%, hsl(142 70% 45% / 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, hsl(220 85% 55% / 0.15) 0%, transparent 50%)'
-        }} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative">
+      {/* Footer / Contact */}
+      <footer id="contact" className="border-t bg-muted/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             {/* Brand */}
             <div className="space-y-4">
