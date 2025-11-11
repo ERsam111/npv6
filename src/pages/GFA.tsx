@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Play, MapPin, BarChart3, TrendingUp, Upload, Download, MessageSquare } from "lucide-react";
+import { ArrowLeft, Play, MapPin, BarChart3, TrendingUp, Upload, Download, MessageSquare, FileDown } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -237,6 +238,78 @@ const GFA = () => {
       setCustomers([...customers, ...newCustomers]);
     }
   };
+
+  const handleExportCurrentData = () => {
+    if (customers.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+
+    // Sheet 1: Customers
+    const customersExport = customers.map(c => ({
+      Product: c.product,
+      Name: c.name,
+      City: c.city,
+      Country: c.country,
+      Latitude: c.latitude,
+      Longitude: c.longitude,
+      Demand: c.demand,
+      Unit: c.unitOfMeasure
+    }));
+    const customersSheet = XLSX.utils.json_to_sheet(customersExport);
+    XLSX.utils.book_append_sheet(workbook, customersSheet, "Customers");
+
+    // Sheet 2: Products
+    if (products.length > 0) {
+      const productsExport = products.map(p => {
+        const row: any = {
+          Product: p.name,
+          BaseUnit: p.baseUnit,
+          SellingPrice: p.sellingPrice || ""
+        };
+        if (p.unitConversions) {
+          Object.entries(p.unitConversions).forEach(([key, value]) => {
+            row[key] = value;
+          });
+        }
+        return row;
+      });
+      const productsSheet = XLSX.utils.json_to_sheet(productsExport);
+      XLSX.utils.book_append_sheet(workbook, productsSheet, "Products");
+    }
+
+    // Sheet 3: Existing Sites
+    if (existingSites.length > 0) {
+      const sitesExport = existingSites.map(s => ({
+        Name: s.name,
+        City: s.city,
+        Country: s.country,
+        Latitude: s.latitude,
+        Longitude: s.longitude,
+        Capacity: s.capacity,
+        CapacityUnit: s.capacityUnit
+      }));
+      const sitesSheet = XLSX.utils.json_to_sheet(sitesExport);
+      XLSX.utils.book_append_sheet(workbook, sitesSheet, "Existing Sites");
+    }
+
+    // Sheet 4: Cost Parameters
+    const costExport = [{
+      TransportationCostPerMilePerUnit: settings.transportationCostPerMilePerUnit,
+      FacilityCost: settings.facilityCost,
+      DistanceUnit: settings.distanceUnit,
+      CostUnit: settings.costUnit
+    }];
+    const costSheet = XLSX.utils.json_to_sheet(costExport);
+    XLSX.utils.book_append_sheet(workbook, costSheet, "Cost Parameters");
+
+    const filename = `gfa_model_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+    toast.success("Model data exported successfully");
+  };
+
   const handleClearData = () => {
     setCustomers([]);
     setProducts([]);
@@ -315,7 +388,18 @@ const GFA = () => {
                         <h3 className="text-sm font-medium">Upload Customer Data</h3>
                         <p className="text-xs text-muted-foreground truncate">Import Excel file to populate customer table</p>
                       </div>
-                      <ExcelUploadCompact onBulkUpload={handleBulkUpload} />
+                      <div className="flex items-center gap-2">
+                        <ExcelUploadCompact onBulkUpload={handleBulkUpload} />
+                        <Button 
+                          onClick={handleExportCurrentData} 
+                          variant="outline" 
+                          size="sm"
+                          disabled={customers.length === 0}
+                        >
+                          <FileDown className="h-4 w-4 mr-2" />
+                          Export
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
