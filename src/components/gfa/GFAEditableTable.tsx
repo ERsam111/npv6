@@ -9,7 +9,7 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { TableColumnFilter, ColumnFilter, SortDirection, applyColumnFilter, applySorting } from "@/components/ui/table-column-filter";
 interface GFAEditableTableProps {
-  tableType: "customers" | "products" | "existing-sites";
+  tableType: "customers" | "products" | "existing_sites";
   data: any[];
   onDataChange: (data: any[]) => void;
   onGeocode?: (index: number) => void;
@@ -17,13 +17,13 @@ interface GFAEditableTableProps {
 const getTableTitle = (type: string) => ({
   customers: "Customers",
   products: "Products",
-  "existing-sites": "Existing Sites"
+  "existing_sites": "Existing Sites"
 })[type] || type;
 const getTableColumns = (tableType: string): string[] => {
   const map: Record<string, string[]> = {
     customers: ["Customer Name", "City", "Country", "Latitude", "Longitude", "Product", "Demand", "Unit of Measure"],
     products: ["Product Name", "Base Unit", "Selling Price", "to_m3", "to_ft3", "to_kg", "to_tonnes", "to_lbs", "to_liters", "to_pallets", "to_units", "to_sq2", "to_cbm"],
-    "existing-sites": ["Site Name", "City", "Country", "Latitude", "Longitude", "Capacity", "Capacity Unit"]
+    existing_sites: ["Site Name", "City", "Country", "Latitude", "Longitude", "Capacity", "Capacity Unit"]
   };
   return map[tableType] || ["Name"];
 };
@@ -50,7 +50,7 @@ const keyOf = (label: string, tableType: string) => {
       "Unit Conversions": "unitConversions"
     };
     return productKeyMap[label] || label.toLowerCase().replace(/[\s]+/g, "_");
-  } else if (tableType === "existing-sites") {
+  } else if (tableType === "existing_sites") {
     const existingSiteKeyMap: Record<string, string> = {
       "Site Name": "name",
       "City": "city",
@@ -94,7 +94,7 @@ export function GFAEditableTable({
       newRow.product = "";
       newRow.demand = 0;
       newRow.unitOfMeasure = "m3";
-    } else if (tableType === "existing-sites") {
+    } else if (tableType === "existing_sites") {
       newRow.id = `site-${Date.now()}`;
       newRow.name = "";
       newRow.city = "";
