@@ -83,8 +83,8 @@ const Dashboard = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-gfa/5 via-forecasting/5 to-inventory/5" />
         <div className="relative px-4 py-4">
           <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-end gap-6">
+              <div className="text-right">
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gfa via-forecasting to-inventory bg-clip-text text-transparent">
                   JCG Supply Chain Optimization
                 </h1>
@@ -92,8 +92,12 @@ const Dashboard = () => {
                   AI-powered tools for supply chain management
                 </p>
               </div>
-              <Button onClick={() => setCaseStudiesOpen(true)} variant="outline" size="sm" className="hover:border-gfa">
-                <BookOpen className="h-4 w-4 mr-2" />
+              <Button 
+                onClick={() => setCaseStudiesOpen(true)} 
+                size="lg"
+                className="hover:border-gfa bg-gradient-to-r from-gfa to-gfa/80 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
+              >
+                <BookOpen className="h-5 w-5 mr-2" />
                 Guides
               </Button>
             </div>
