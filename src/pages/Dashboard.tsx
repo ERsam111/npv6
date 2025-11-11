@@ -161,39 +161,39 @@ const Dashboard = () => {
         {/* Bottom CTA Section */}
         <div className="relative mt-6 overflow-hidden rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
           <div className="absolute inset-0 bg-gradient-to-r from-gfa/5 via-forecasting/5 to-inventory/5" />
-          <div className="relative px-8 py-8">
-            <div className="max-w-3xl mx-auto text-center space-y-4">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-gfa via-forecasting to-inventory bg-clip-text text-transparent">
+          <div className="relative px-6 py-4">
+            <div className="max-w-3xl mx-auto text-center space-y-3">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-gfa via-forecasting to-inventory bg-clip-text text-transparent">
                 Ready to Optimize Your Supply Chain?
               </h2>
-              <p className="text-muted-foreground">
-                Create your first project and experience AI-powered supply chain optimization
+              <p className="text-sm text-muted-foreground">
+                Create your first project and experience AI-powered optimization
               </p>
-              <div className="flex flex-wrap justify-center gap-6 pt-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Brain className="h-5 w-5 text-primary" />
+              <div className="flex flex-wrap justify-center gap-4 pt-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Brain className="h-4 w-4 text-primary" />
                   </div>
                   <div className="text-left">
-                    <div className="text-sm font-medium">Smart Analysis</div>
-                    <div className="text-xs text-muted-foreground">AI-powered insights</div>
+                    <div className="text-xs font-medium">Smart Analysis</div>
+                    <div className="text-xs text-muted-foreground">AI insights</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-                    <Bot className="h-5 w-5 text-secondary" />
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-secondary/10 flex items-center justify-center">
+                    <Bot className="h-4 w-4 text-secondary" />
                   </div>
                   <div className="text-left">
-                    <div className="text-sm font-medium">Interactive Assistant</div>
+                    <div className="text-xs font-medium">Interactive Assistant</div>
                     <div className="text-xs text-muted-foreground">Real-time guidance</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 text-accent" />
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                    <TrendingUp className="h-4 w-4 text-accent" />
                   </div>
                   <div className="text-left">
-                    <div className="text-sm font-medium">Data-Driven</div>
+                    <div className="text-xs font-medium">Data-Driven</div>
                     <div className="text-xs text-muted-foreground">Optimize operations</div>
                   </div>
                 </div>
