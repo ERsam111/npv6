@@ -679,6 +679,184 @@ function buildDCConfiguration(
 }
 
 /**
+ * Greedy Geodesic Cover Algorithm
+ * Minimizes number of sites to cover all customers within max service distance
+ */
+function greedyGeodesicCover(
+  customers: Customer[],
+  maxServiceDistance: number,
+  existingSites?: ExistingSite[],
+  existingSitesMode?: 'potential' | 'always'
+): {
+  dcs: DistributionCenter[];
+  coveragePercentage: number;
+  maxClusterRadius: number;
+  totalDistanceFlow: number;
+  uncoveredCount: number;
+} {
+  const TOLERANCE = 1e-5; // degrees
+  const MAX_ITERATIONS = 100;
+  
+  // Track which customers are covered
+  const uncovered = new Set(customers.map((_, idx) => idx));
+  const sites: DistributionCenter[] = [];
+  
+  // If existingSitesMode is 'always', start with existing sites
+  if (existingSites && existingSites.length > 0 && existingSitesMode === 'always') {
+    existingSites.forEach((site, idx) => {
+      const dc: DistributionCenter = {
+        id: `existing-${idx + 1}`,
+        latitude: Number(site.latitude),
+        longitude: Number(site.longitude),
+        assignedCustomers: [],
+        totalDemand: 0
+      };
+      
+      // Mark customers within max distance as covered
+      customers.forEach((customer, custIdx) => {
+        const dist = haversineDistance(
+          customer.latitude,
+          customer.longitude,
+          dc.latitude,
+          dc.longitude
+        );
+        
+        if (dist <= maxServiceDistance && uncovered.has(custIdx)) {
+          uncovered.delete(custIdx);
+        }
+      });
+      
+      sites.push(dc);
+    });
+  }
+  
+  // Greedy cover: add sites until all customers are covered
+  let iteration = 0;
+  while (uncovered.size > 0 && iteration < MAX_ITERATIONS) {
+    iteration++;
+    
+    // Get uncovered customers
+    const uncoveredCustomers = Array.from(uncovered).map(idx => customers[idx]);
+    
+    if (uncoveredCustomers.length === 0) break;
+    
+    // Find geodesic center (weighted geometric median) of uncovered customers
+    const center = calculateGeodesicCentroid(uncoveredCustomers);
+    
+    // Create new site at this center
+    const newSite: DistributionCenter = {
+      id: `site-${sites.length + 1}`,
+      latitude: center.latitude,
+      longitude: center.longitude,
+      assignedCustomers: [],
+      totalDemand: 0
+    };
+    
+    // Mark customers within max distance as covered
+    let newlyCovered = 0;
+    customers.forEach((customer, custIdx) => {
+      const dist = haversineDistance(
+        customer.latitude,
+        customer.longitude,
+        newSite.latitude,
+        newSite.longitude
+      );
+      
+      if (dist <= maxServiceDistance && uncovered.has(custIdx)) {
+        uncovered.delete(custIdx);
+        newlyCovered++;
+      }
+    });
+    
+    // Only add site if it covers at least one new customer
+    if (newlyCovered > 0) {
+      sites.push(newSite);
+    } else {
+      // No progress, break to avoid infinite loop
+      break;
+    }
+  }
+  
+  // Refinement phase: optimize each site's position based on assigned customers
+  sites.forEach(site => {
+    // Find all customers this site covers
+    const coveredByThisSite: Customer[] = [];
+    customers.forEach(customer => {
+      const dist = haversineDistance(
+        customer.latitude,
+        customer.longitude,
+        site.latitude,
+        site.longitude
+      );
+      if (dist <= maxServiceDistance) {
+        coveredByThisSite.push(customer);
+      }
+    });
+    
+    if (coveredByThisSite.length > 0) {
+      // Re-optimize site position to geodesic center of its covered customers
+      const refinedCenter = calculateGeodesicCentroid(coveredByThisSite);
+      site.latitude = refinedCenter.latitude;
+      site.longitude = refinedCenter.longitude;
+    }
+  });
+  
+  // Assign customers to nearest site
+  sites.forEach(site => {
+    site.assignedCustomers = [];
+    site.totalDemand = 0;
+  });
+  
+  customers.forEach(customer => {
+    let nearestSite = sites[0];
+    let minDist = Infinity;
+    
+    sites.forEach(site => {
+      const dist = haversineDistance(
+        customer.latitude,
+        customer.longitude,
+        site.latitude,
+        site.longitude
+      );
+      if (dist < minDist) {
+        minDist = dist;
+        nearestSite = site;
+      }
+    });
+    
+    nearestSite.assignedCustomers.push(customer);
+    nearestSite.totalDemand += customer.demand * customer.conversionFactor;
+  });
+  
+  // Calculate metrics
+  let totalDistanceFlow = 0;
+  let maxClusterRadius = 0;
+  
+  sites.forEach(site => {
+    site.assignedCustomers.forEach(customer => {
+      const dist = haversineDistance(
+        customer.latitude,
+        customer.longitude,
+        site.latitude,
+        site.longitude
+      );
+      totalDistanceFlow += dist * customer.demand * customer.conversionFactor;
+      maxClusterRadius = Math.max(maxClusterRadius, dist);
+    });
+  });
+  
+  const coveragePercentage = ((customers.length - uncovered.size) / customers.length) * 100;
+  
+  return {
+    dcs: sites,
+    coveragePercentage,
+    maxClusterRadius,
+    totalDistanceFlow,
+    uncoveredCount: uncovered.size
+  };
+}
+
+/**
  * Calculate total cost for a DC configuration
  * Returns: { totalCost, transportationCost, facilityCost }
  */
@@ -759,118 +937,26 @@ export function optimizeWithConstraints(
       existingSitesMode
     );
   } else if (mode === 'distance') {
-    // Distance-based optimization: find MINIMUM number of sites that meet constraints
-    // AND minimize total cost for that number of sites
-    const targetDemandPercentage = constraints.demandPercentage || 100;
-    const maxSites = customers.length;
+    // Distance-based optimization: Greedy Geodesic Cover algorithm
+    // Minimize number of sites such that all customers are within max service distance
+    const result = greedyGeodesicCover(
+      customers,
+      constraints.maxRadius,
+      existingSites,
+      existingSitesMode
+    );
     
-    // Helper function to check if configuration meets constraints
-    const meetsConstraints = (testDcs: DistributionCenter[]): boolean => {
-      let violations = 0;
-      
-      testDcs.forEach(dc => {
-        if (dc.totalDemand === 0) return;
-        
-        // Check distance constraint
-        let demandWithinRadius = 0;
-        dc.assignedCustomers.forEach(customer => {
-          const distance = haversineDistance(
-            customer.latitude,
-            customer.longitude,
-            dc.latitude,
-            dc.longitude
-          );
-          if (distance <= constraints.maxRadius) {
-            demandWithinRadius += customer.demand * customer.conversionFactor;
-          }
-        });
-        
-        const percentageWithinRadius = (demandWithinRadius / dc.totalDemand) * 100;
-        if (percentageWithinRadius < targetDemandPercentage) {
-          violations++;
-        }
-        
-        // Check capacity constraint
-        if (hasCapacityConstraint && dc.totalDemand > constraints.dcCapacity) {
-          violations++;
-        }
-      });
-      
-      return violations === 0;
-    };
+    dcs = result.dcs;
     
-    // Binary search to find minimum number of sites
-    let minFeasibleSites = maxSites;
-    let foundFeasible = false;
-    
-    // First, find if solution is feasible with existing sites (if in always mode)
-    if (existingSites && existingSites.length > 0 && existingSitesMode === 'always') {
-      const existingDcs = buildDCConfiguration(customers, 0, existingSites, 'always');
-      if (meetsConstraints(existingDcs)) {
-        dcs = existingDcs;
-        foundFeasible = true;
-        minFeasibleSites = existingSites.length;
-      }
-    }
-    
-    // If not feasible with just existing sites, search for minimum sites needed
-    if (!foundFeasible) {
-      // Linear search from 1 to find minimum feasible
-      for (let numSites = 1; numSites <= maxSites; numSites++) {
-        let testDcs: DistributionCenter[];
-        
-        if (existingSites && existingSites.length > 0 && existingSitesMode === 'always') {
-          const numNewSites = Math.max(0, numSites - existingSites.length);
-          testDcs = buildDCConfiguration(customers, numNewSites, existingSites, 'always');
-        } else if (existingSites && existingSites.length > 0 && existingSitesMode === 'potential') {
-          // Try both existing and new sites, pick better one
-          let bestTestDcs = kMeansOptimization(customers, numSites);
-          let bestCost = costParams ? calculateConfigurationCost(
-            bestTestDcs,
-            costParams.transportationCostPerMilePerUnit,
-            costParams.distanceUnit,
-            costParams.costUnit,
-            products || [],
-            costParams.facilityCost,
-            undefined
-          ).totalCost : calculateTotalDistanceFlow(bestTestDcs);
-          
-          if (numSites <= existingSites.length) {
-            const existingTestDcs = buildDCConfiguration(customers, numSites, existingSites, 'use-existing-subset');
-            const existingCost = costParams ? calculateConfigurationCost(
-              existingTestDcs,
-              costParams.transportationCostPerMilePerUnit,
-              costParams.distanceUnit,
-              costParams.costUnit,
-              products || [],
-              costParams.facilityCost,
-              existingSites
-            ).totalCost : calculateTotalDistanceFlow(existingTestDcs);
-            
-            if (existingCost < bestCost) {
-              bestTestDcs = existingTestDcs;
-            }
-          }
-          testDcs = bestTestDcs;
-        } else {
-          testDcs = kMeansOptimization(customers, numSites);
-        }
-        
-        if (meetsConstraints(testDcs)) {
-          dcs = testDcs;
-          minFeasibleSites = numSites;
-          foundFeasible = true;
-          break;
-        }
-      }
-    }
-    
-    if (!foundFeasible) {
+    if (result.coveragePercentage < 100) {
       warnings.push(
-        `Unable to find feasible solution even with ${maxSites} sites. Consider relaxing constraints.`
+        `Coverage: ${result.coveragePercentage.toFixed(1)}% (${result.uncoveredCount} customers not covered within ${constraints.maxRadius} km)`
       );
-      dcs = kMeansOptimization(customers, maxSites);
     }
+    
+    warnings.push(
+      `Greedy Geodesic Cover: ${dcs.length} sites, max cluster radius: ${result.maxClusterRadius.toFixed(1)} km, total distance×flow: ${result.totalDistanceFlow.toFixed(2)}`
+    );
   } else {
     // Sites-based optimization: MINIMIZE total distance-flow (or cost) for specified number of sites
     if (existingSites && existingSites.length > 0 && existingSitesMode === 'always') {

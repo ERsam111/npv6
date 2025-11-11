@@ -41,7 +41,7 @@ export function OptimizationSettings({
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="distance" id="mode-distance" />
               <Label htmlFor="mode-distance" className="font-normal cursor-pointer">
-                Demand Coverage Mode (control % of demand within distance)
+                Greedy Geodesic Cover – Minimal Sites within Distance Cap
               </Label>
             </div>
             <div className="flex items-center space-x-2">
@@ -108,7 +108,7 @@ export function OptimizationSettings({
                 }
               />
               <p className="text-xs text-muted-foreground">
-                Minimum {settings.demandPercentage}% of demand from each site must be within {settings.maxRadius} km. System will open as many sites as needed to meet this constraint.
+                Greedy algorithm finds minimum sites needed so all customers are within this distance. Each iteration places a site at the geodesic center of uncovered customers.
               </p>
             </div>
           </div>
