@@ -92,8 +92,8 @@ export function GFAResultsPanel({
             </CardTitle>
             <CardDescription>Visual representation of site-customer connections</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="h-[600px]">
+          <CardContent className="p-4">
+            <div className="h-[550px] w-full">
               <MapView
                 customers={customers}
                 dcs={dcs}

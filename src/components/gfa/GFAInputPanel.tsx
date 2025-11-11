@@ -5,6 +5,7 @@ import { Customer, Product, OptimizationSettings, ExistingSite } from "@/types/g
 import { ExcelUpload } from "./ExcelUpload";
 import { GFAEditableTable } from "./GFAEditableTable";
 import { CostParameters } from "./CostParameters";
+import { CustomerMapView } from "./CustomerMapView";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +86,9 @@ export function GFAInputPanel({
 
   return (
     <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+      {/* Customer Map - Pure Input Visualization */}
+      {customers.length > 0 && <CustomerMapView customers={customers} />}
+      
       {/* Section 1: Data Upload + Clear All */}
       <Card className="shadow-sm">
         <CardHeader className="pb-2 pt-3 px-3">

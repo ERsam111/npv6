@@ -366,75 +366,75 @@ export function MapView({ customers, dcs, distanceRangeStep, distanceUnit }: Map
   };
 
   return (
-    <Card className="p-4 h-full">
+    <div className="w-full h-full flex flex-col">
       {/* header / legend / controls */}
-      <div className="flex items-center gap-4 mb-3 flex-wrap">
-        <h3 className="text-lg font-semibold">Green Field Analysis — Map</h3>
+      <div className="flex items-center gap-3 mb-2 flex-wrap text-xs">
+        <h3 className="text-sm font-semibold">Network Visualization</h3>
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={showCustomers} onChange={(e) => setShowCustomers(e.target.checked)} />
-          <span className="flex items-center gap-2">
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+          <input type="checkbox" checked={showCustomers} onChange={(e) => setShowCustomers(e.target.checked)} className="h-3 w-3" />
+          <span className="flex items-center gap-1.5">
             <span
               className="inline-block rounded-full"
-              style={{ width: 12, height: 12, background: "rgba(59,130,246,0.75)", border: "2px solid white" }}
+              style={{ width: 8, height: 8, background: "rgba(59,130,246,0.75)", border: "1px solid white" }}
             />
-            Customers (size = demand)
+            Customers
           </span>
         </label>
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={showSites} onChange={(e) => setShowSites(e.target.checked)} />
-          <span className="flex items-center gap-2">
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+          <input type="checkbox" checked={showSites} onChange={(e) => setShowSites(e.target.checked)} className="h-3 w-3" />
+          <span className="flex items-center gap-1.5">
             <span
               className="inline-block"
-              style={{ width: 12, height: 12, background: "#22c55e", border: "2px solid white" }}
+              style={{ width: 8, height: 8, background: "#22c55e", border: "1px solid white" }}
             />
-            Distribution Centers
+            Sites
           </span>
         </label>
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={showLines} onChange={(e) => setShowLines(e.target.checked)} />
-          <span className="flex items-center gap-2">
-            <span className="inline-block w-8 h-0.5 bg-slate-400" />
-            Connections
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+          <input type="checkbox" checked={showLines} onChange={(e) => setShowLines(e.target.checked)} className="h-3 w-3" />
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-6 h-0.5 bg-slate-400" />
+            Lines
           </span>
         </label>
 
-        <div className="ml-auto flex items-center gap-2 text-sm">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={autoFit} onChange={(e) => setAutoFit(e.target.checked)} />
+        <div className="ml-auto flex items-center gap-1.5 text-xs">
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={autoFit} onChange={(e) => setAutoFit(e.target.checked)} className="h-3 w-3" />
             Auto-fit
           </label>
-          <button onClick={fitNow} className="text-xs px-2 py-1 rounded border bg-white hover:bg-slate-50">
-            Fit now
+          <button onClick={fitNow} className="text-[10px] px-1.5 py-0.5 rounded border bg-background hover:bg-muted">
+            Fit
           </button>
         </div>
       </div>
 
       {/* site filter */}
       {dcs.length > 0 && (
-        <div className="mb-3">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs text-muted-foreground">Filter by site:</span>
-            <div className="flex gap-2">
+        <div className="mb-2">
+          <div className="flex items-center justify-between gap-1.5 mb-1.5">
+            <span className="text-[10px] text-muted-foreground">Sites:</span>
+            <div className="flex gap-1">
               <button
                 onClick={() => setSelectedSites(new Set(dcs.map((dc) => dc.id)))}
-                className="text-xs px-2 py-1 rounded border bg-white hover:bg-slate-50"
+                className="text-[10px] px-1.5 py-0.5 rounded border bg-background hover:bg-muted"
               >
                 All
               </button>
               <button
                 onClick={() => setSelectedSites(new Set())}
-                className="text-xs px-2 py-1 rounded border bg-white hover:bg-slate-50"
+                className="text-[10px] px-1.5 py-0.5 rounded border bg-background hover:bg-muted"
               >
-                Clear
+                None
               </button>
             </div>
           </div>
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
             {dcs.map((dc) => (
-              <label key={dc.id} className="flex items-center gap-2 text-xs cursor-pointer">
+              <label key={dc.id} className="flex items-center gap-1 text-[10px] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={selectedSites.has(dc.id)}
@@ -445,6 +445,7 @@ export function MapView({ customers, dcs, distanceRangeStep, distanceUnit }: Map
                       return next;
                     })
                   }
+                  className="h-3 w-3"
                 />
                 <span>{dc.id}</span>
               </label>
@@ -453,10 +454,10 @@ export function MapView({ customers, dcs, distanceRangeStep, distanceUnit }: Map
         </div>
       )}
 
-      {/* range chips */}
+      {/* range chips - very small */}
       {ranges.length > 0 && (
-        <div className="mb-3 flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">Distance ranges:</span>
+        <div className="mb-2 flex items-center gap-1 flex-wrap">
+          <span className="text-[10px] text-muted-foreground">Ranges:</span>
           {ranges.map((r) => {
             const active = selectedRanges.has(r.index) || (!isAnyRangeSelected && true);
             return (
@@ -469,7 +470,7 @@ export function MapView({ customers, dcs, distanceRangeStep, distanceUnit }: Map
                     return next;
                   })
                 }
-                className={`text-xs px-2 py-1 rounded border transition ${active ? "ring-1 ring-black/10" : "opacity-40"}`}
+                className={`text-[9px] px-1 py-0.5 rounded border transition ${active ? "ring-1 ring-black/10" : "opacity-40"}`}
                 style={{ backgroundColor: r.color, color: "#000", borderColor: "rgba(0,0,0,0.08)" }}
                 title={r.label}
               >
@@ -479,21 +480,21 @@ export function MapView({ customers, dcs, distanceRangeStep, distanceUnit }: Map
           })}
           <button
             onClick={() => setSelectedRanges(new Set(ranges.map((r) => r.index)))}
-            className="text-xs px-2 py-1 rounded border bg-white hover:bg-slate-50"
+            className="text-[10px] px-1.5 py-0.5 rounded border bg-background hover:bg-muted"
           >
             All
           </button>
           <button
             onClick={() => setSelectedRanges(new Set())}
-            className="text-xs px-2 py-1 rounded border bg-white hover:bg-slate-50"
+            className="text-[10px] px-1.5 py-0.5 rounded border bg-background hover:bg-muted"
           >
-            Clear
+            None
           </button>
         </div>
       )}
 
-      {/* map */}
-      <div ref={mapContainer} className="rounded-lg" style={{ height: "520px", width: "100%" }} />
-    </Card>
+      {/* map container */}
+      <div ref={mapContainer} className="w-full flex-1 rounded border overflow-hidden" style={{ minHeight: '400px' }} />
+    </div>
   );
 }
