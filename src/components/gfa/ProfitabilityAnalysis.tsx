@@ -12,25 +12,22 @@ import { useState, useMemo } from "react";
 import { haversineDistance } from "@/utils/geoCalculations";
 import * as XLSX from 'xlsx';
 import { toast } from "sonner";
-
 interface ProfitabilityAnalysisProps {
   customers: Customer[];
   products?: Product[];
   dcs?: DistributionCenter[];
   settings?: OptimizationSettings;
 }
-
-export function ProfitabilityAnalysis({ 
-  customers, 
-  products = [], 
-  dcs = [], 
-  settings 
+export function ProfitabilityAnalysis({
+  customers,
+  products = [],
+  dcs = [],
+  settings
 }: ProfitabilityAnalysisProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [customerSort, setCustomerSort] = useState<'profit' | 'margin' | 'revenue'>('profit');
   const [productFilter, setProductFilter] = useState<string>('all');
   const [profitabilityFilter, setProfitabilityFilter] = useState<'all' | 'profitable' | 'unprofitable'>('all');
-
   const hasRevenue = products.some(p => p.sellingPrice);
   const hasCost = dcs.length > 0 && settings;
 
@@ -39,30 +36,20 @@ export function ProfitabilityAnalysis({
     return customers.map(customer => {
       const product = products.find(p => p.name === customer.product);
       const revenue = product?.sellingPrice ? customer.demand * product.sellingPrice : 0;
-      
+
       // Calculate transportation cost
       let transportCost = 0;
       if (settings) {
-        const assignedDC = dcs.find(dc => 
-          dc.assignedCustomers.some(c => c.id === customer.id)
-        );
-        
+        const assignedDC = dcs.find(dc => dc.assignedCustomers.some(c => c.id === customer.id));
         if (assignedDC) {
-          const distanceKm = haversineDistance(
-            customer.latitude,
-            customer.longitude,
-            assignedDC.latitude,
-            assignedDC.longitude
-          );
+          const distanceKm = haversineDistance(customer.latitude, customer.longitude, assignedDC.latitude, assignedDC.longitude);
           const distance = settings.distanceUnit === 'mile' ? distanceKm * 0.621371 : distanceKm;
           transportCost = distance * customer.demand * settings.transportationCostPerMilePerUnit;
         }
       }
-      
       const profit = revenue - transportCost;
-      const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+      const margin = revenue > 0 ? profit / revenue * 100 : 0;
       const isProfitable = profit > 0;
-      
       return {
         ...customer,
         revenue,
@@ -85,7 +72,6 @@ export function ProfitabilityAnalysis({
       avgMargin: number;
       unit: string;
     }>();
-
     customerProfitability.forEach(customer => {
       const existing = productMap.get(customer.product) || {
         product: customer.product,
@@ -96,18 +82,15 @@ export function ProfitabilityAnalysis({
         avgMargin: 0,
         unit: customer.unitOfMeasure
       };
-
       existing.totalRevenue += customer.revenue;
       existing.totalCost += customer.transportCost;
       existing.totalProfit += customer.profit;
       existing.customerCount += 1;
-
       productMap.set(customer.product, existing);
     });
-
     return Array.from(productMap.values()).map(p => ({
       ...p,
-      avgMargin: p.totalRevenue > 0 ? (p.totalProfit / p.totalRevenue) * 100 : 0
+      avgMargin: p.totalRevenue > 0 ? p.totalProfit / p.totalRevenue * 100 : 0
     })).sort((a, b) => b.totalProfit - a.totalProfit);
   }, [customerProfitability]);
 
@@ -133,7 +116,6 @@ export function ProfitabilityAnalysis({
       if (customerSort === 'margin') return b.margin - a.margin;
       return b.revenue - a.revenue;
     });
-
     return filtered;
   }, [customerProfitability, productFilter, profitabilityFilter, customerSort]);
 
@@ -141,10 +123,9 @@ export function ProfitabilityAnalysis({
   const totalRevenue = customerProfitability.reduce((sum, c) => sum + c.revenue, 0);
   const totalCost = customerProfitability.reduce((sum, c) => sum + c.transportCost, 0);
   const totalProfit = totalRevenue - totalCost;
-  const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+  const avgMargin = totalRevenue > 0 ? totalProfit / totalRevenue * 100 : 0;
   const profitableCustomers = customerProfitability.filter(c => c.isProfitable).length;
   const unprofitableCustomers = customerProfitability.length - profitableCustomers;
-
   const handleExport = () => {
     const exportData = customerProfitability.map(c => ({
       'Customer Name': c.name,
@@ -155,24 +136,20 @@ export function ProfitabilityAnalysis({
       'Transport Cost': c.transportCost.toFixed(2),
       'Profit': c.profit.toFixed(2),
       'Margin %': c.margin.toFixed(2),
-      'Status': c.isProfitable ? 'Profitable' : 'Loss',
+      'Status': c.isProfitable ? 'Profitable' : 'Loss'
     }));
-
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(exportData);
     XLSX.utils.book_append_sheet(wb, ws, "Profitability Analysis");
-    
     const timestamp = new Date().toISOString().split('T')[0];
     const fileName = `profitability-analysis-${timestamp}.xlsx`;
     XLSX.writeFile(wb, fileName);
-    
     toast.success(`Exported profitability analysis to ${fileName}`);
   };
 
   // Early return after all hooks have been called
   if (!hasRevenue || !hasCost || customers.length === 0) {
-    return (
-      <Card className="shadow-lg">
+    return <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -181,17 +158,12 @@ export function ProfitabilityAnalysis({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-8">
-            {!hasRevenue ? "Add selling prices to products to see profitability analysis" : 
-             !hasCost ? "Run optimization with cost parameters to see profitability analysis" :
-             "Add customer data to see profitability analysis"}
+            {!hasRevenue ? "Add selling prices to products to see profitability analysis" : !hasCost ? "Run optimization with cost parameters to see profitability analysis" : "Add customer data to see profitability analysis"}
           </p>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+  return <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className="shadow-lg">
         <CardHeader className="cursor-pointer">
           <CollapsibleTrigger className="w-full">
@@ -208,17 +180,7 @@ export function ProfitabilityAnalysis({
               </div>
             </div>
           </CollapsibleTrigger>
-          {isOpen && (
-            <Button
-              onClick={handleExport}
-              variant="outline"
-              size="sm"
-              className="gap-2 absolute top-4 right-4"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-          )}
+          {isOpen}
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="space-y-6">
@@ -230,7 +192,9 @@ export function ProfitabilityAnalysis({
                   <p className="text-xs text-muted-foreground">Total Profit</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  ${totalProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  ${totalProfit.toLocaleString(undefined, {
+                  maximumFractionDigits: 0
+                })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {avgMargin.toFixed(1)}% avg margin
@@ -246,7 +210,7 @@ export function ProfitabilityAnalysis({
                   {profitableCustomers}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {((profitableCustomers / customerProfitability.length) * 100).toFixed(1)}% of total
+                  {(profitableCustomers / customerProfitability.length * 100).toFixed(1)}% of total
                 </p>
               </div>
 
@@ -259,7 +223,7 @@ export function ProfitabilityAnalysis({
                   {unprofitableCustomers}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {((unprofitableCustomers / customerProfitability.length) * 100).toFixed(1)}% of total
+                  {(unprofitableCustomers / customerProfitability.length * 100).toFixed(1)}% of total
                 </p>
               </div>
 
@@ -269,10 +233,14 @@ export function ProfitabilityAnalysis({
                   <p className="text-xs text-muted-foreground">Total Revenue</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  ${totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  ${totalRevenue.toLocaleString(undefined, {
+                  maximumFractionDigits: 0
+                })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  ${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })} cost
+                  ${totalCost.toLocaleString(undefined, {
+                  maximumFractionDigits: 0
+                })} cost
                 </p>
               </div>
             </div>
@@ -299,9 +267,7 @@ export function ProfitabilityAnalysis({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Products</SelectItem>
-                      {products.map(p => (
-                        <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>
-                      ))}
+                      {products.map(p => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
 
@@ -336,34 +302,23 @@ export function ProfitabilityAnalysis({
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={filteredCustomers.slice(0, 20)}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="name" 
-                        className="text-xs"
-                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                        angle={-45}
-                        textAnchor="end"
-                        height={100}
-                      />
-                      <YAxis 
-                        className="text-xs"
-                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                        label={{ value: 'Profit ($)', angle: -90, position: 'insideLeft' }}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '6px'
-                        }}
-                        formatter={(value: number) => `$${value.toLocaleString()}`}
-                      />
+                      <XAxis dataKey="name" className="text-xs" tick={{
+                      fill: 'hsl(var(--muted-foreground))'
+                    }} angle={-45} textAnchor="end" height={100} />
+                      <YAxis className="text-xs" tick={{
+                      fill: 'hsl(var(--muted-foreground))'
+                    }} label={{
+                      value: 'Profit ($)',
+                      angle: -90,
+                      position: 'insideLeft'
+                    }} />
+                      <Tooltip contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }} formatter={(value: number) => `$${value.toLocaleString()}`} />
                       <Bar dataKey="profit" name="Profit" radius={[4, 4, 0, 0]}>
-                        {filteredCustomers.slice(0, 20).map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.profit > 0 ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))'} 
-                          />
-                        ))}
+                        {filteredCustomers.slice(0, 20).map((entry, index) => <Cell key={`cell-${index}`} fill={entry.profit > 0 ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))'} />)}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
@@ -384,31 +339,31 @@ export function ProfitabilityAnalysis({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCustomers.map((customer) => (
-                        <TableRow key={customer.id}>
+                      {filteredCustomers.map(customer => <TableRow key={customer.id}>
                           <TableCell className="font-medium">{customer.name}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{customer.product}</TableCell>
                           <TableCell className="text-right">
-                            ${customer.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            ${customer.revenue.toLocaleString(undefined, {
+                          maximumFractionDigits: 0
+                        })}
                           </TableCell>
                           <TableCell className="text-right">
-                            ${customer.transportCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            ${customer.transportCost.toLocaleString(undefined, {
+                          maximumFractionDigits: 0
+                        })}
                           </TableCell>
                           <TableCell className={`text-right font-semibold ${customer.profit > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            ${customer.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            ${customer.profit.toLocaleString(undefined, {
+                          maximumFractionDigits: 0
+                        })}
                           </TableCell>
                           <TableCell className="text-right">
                             {customer.margin.toFixed(1)}%
                           </TableCell>
                           <TableCell>
-                            {customer.isProfitable ? (
-                              <Badge variant="default" className="bg-green-500">Profitable</Badge>
-                            ) : (
-                              <Badge variant="destructive">Loss</Badge>
-                            )}
+                            {customer.isProfitable ? <Badge variant="default" className="bg-green-500">Profitable</Badge> : <Badge variant="destructive">Loss</Badge>}
                           </TableCell>
-                        </TableRow>
-                      ))}
+                        </TableRow>)}
                     </TableBody>
                   </Table>
                 </div>
@@ -424,24 +379,21 @@ export function ProfitabilityAnalysis({
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={productProfitability}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="product" 
-                        className="text-xs"
-                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                      />
-                      <YAxis 
-                        className="text-xs"
-                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                        label={{ value: 'Profit ($)', angle: -90, position: 'insideLeft' }}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '6px'
-                        }}
-                        formatter={(value: number) => `$${value.toLocaleString()}`}
-                      />
+                      <XAxis dataKey="product" className="text-xs" tick={{
+                      fill: 'hsl(var(--muted-foreground))'
+                    }} />
+                      <YAxis className="text-xs" tick={{
+                      fill: 'hsl(var(--muted-foreground))'
+                    }} label={{
+                      value: 'Profit ($)',
+                      angle: -90,
+                      position: 'insideLeft'
+                    }} />
+                      <Tooltip contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }} formatter={(value: number) => `$${value.toLocaleString()}`} />
                       <Bar dataKey="totalProfit" name="Total Profit" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -461,24 +413,28 @@ export function ProfitabilityAnalysis({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {productProfitability.map((product) => (
-                        <TableRow key={product.product}>
+                      {productProfitability.map(product => <TableRow key={product.product}>
                           <TableCell className="font-medium">{product.product}</TableCell>
                           <TableCell className="text-right">{product.customerCount}</TableCell>
                           <TableCell className="text-right">
-                            ${product.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            ${product.totalRevenue.toLocaleString(undefined, {
+                          maximumFractionDigits: 0
+                        })}
                           </TableCell>
                           <TableCell className="text-right">
-                            ${product.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            ${product.totalCost.toLocaleString(undefined, {
+                          maximumFractionDigits: 0
+                        })}
                           </TableCell>
                           <TableCell className={`text-right font-semibold ${product.totalProfit > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            ${product.totalProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            ${product.totalProfit.toLocaleString(undefined, {
+                          maximumFractionDigits: 0
+                        })}
                           </TableCell>
                           <TableCell className="text-right">
                             {product.avgMargin.toFixed(1)}%
                           </TableCell>
-                        </TableRow>
-                      ))}
+                        </TableRow>)}
                     </TableBody>
                   </Table>
                 </div>
@@ -487,6 +443,5 @@ export function ProfitabilityAnalysis({
           </CardContent>
         </CollapsibleContent>
       </Card>
-    </Collapsible>
-  );
+    </Collapsible>;
 }
