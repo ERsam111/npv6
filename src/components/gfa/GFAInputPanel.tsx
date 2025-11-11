@@ -43,7 +43,7 @@ export function GFAInputPanel({
   onExistingSitesChange,
   onSettingsChange,
 }: GFAInputPanelProps) {
-  const [viewMode, setViewMode] = useState<'combined' | 'split'>('combined');
+  const [viewMode, setViewMode] = useState<'combined' | 'split'>('split'); // Default to split view
   
   // Extract unique customer locations from customers
   const uniqueCustomers = useMemo((): CustomerLocation[] => {
@@ -351,7 +351,8 @@ export function GFAInputPanel({
                   unitOfMeasure: c.unitOfMeasure,
                   conversionFactor: c.conversionFactor,
                 }))}
-                customers={uniqueCustomers.map(c => ({...c, included: true}))}
+                customers={uniqueCustomers}
+                products={products}
                 onAddDemand={handleAddDemand}
                 onRemoveDemand={(id) => {
                   const updatedCustomers = customers.filter(c => c.id !== id);

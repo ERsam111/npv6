@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, X } from "lucide-react";
-import { CustomerLocation, Demand } from "@/types/gfa";
+import { CustomerLocation, Demand, Product } from "@/types/gfa";
 import { toast } from "sonner";
 import { getConversionFactor, getAvailableUnits } from "@/utils/unitConversions";
 
 interface DemandTableProps {
   demands: Demand[];
   customers: CustomerLocation[];
+  products: Product[];
   onAddDemand: (demand: Demand) => void;
   onRemoveDemand: (id: string) => void;
 }
@@ -19,6 +20,7 @@ interface DemandTableProps {
 export function DemandTable({
   demands,
   customers,
+  products,
   onAddDemand,
   onRemoveDemand,
 }: DemandTableProps) {
@@ -129,33 +131,47 @@ export function DemandTable({
         <form onSubmit={handleSubmit} className="border rounded-lg p-3 space-y-2 bg-muted/30">
           <div className="space-y-1">
             <Label htmlFor="customerId" className="text-xs">Customer *</Label>
-            <Select
-              value={formData.customerId}
-              onValueChange={(value) => setFormData({ ...formData, customerId: value })}
-            >
-              <SelectTrigger id="customerId" className="h-7 text-xs">
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.filter(c => c.included).map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customer.name} ({customer.city}, {customer.country})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Select
+                value={formData.customerId}
+                onValueChange={(value) => setFormData({ ...formData, customerId: value })}
+              >
+                <SelectTrigger id="customerId" className="h-7 text-xs">
+                  <SelectValue placeholder="Select customer" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {customers.filter(c => c.included).map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name} ({customer.city}, {customer.country})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
               <Label htmlFor="product" className="text-xs">Product *</Label>
-              <Input
-                id="product"
+              <Select
                 value={formData.product}
-                onChange={(e) => setFormData({ ...formData, product: e.target.value })}
-                placeholder="Electronics"
-                className="h-7 text-xs"
-              />
+                onValueChange={(value) => setFormData({ ...formData, product: value })}
+              >
+                <SelectTrigger id="product" className="h-7 text-xs">
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {products.length === 0 ? (
+                    <SelectItem value="__none__" disabled>
+                      No products available - add products first
+                    </SelectItem>
+                  ) : (
+                    products.map((product) => (
+                      <SelectItem key={product.name} value={product.name}>
+                        {product.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label htmlFor="quantity" className="text-xs">Quantity *</Label>
@@ -179,7 +195,7 @@ export function DemandTable({
                 <SelectTrigger id="unitOfMeasure" className="h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background z-50">
                   {getAvailableUnits().map((unit) => (
                     <SelectItem key={unit} value={unit}>
                       {unit}
