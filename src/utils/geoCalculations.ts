@@ -304,6 +304,29 @@ function matchExistingSite(
 }
 
 /**
+ * Calculate total weighted distance-flow for a DC configuration
+ * This is the sum of (distance * demand) for all customer-DC assignments
+ */
+function calculateTotalDistanceFlow(dcs: DistributionCenter[]): number {
+  let totalFlow = 0;
+  
+  dcs.forEach(dc => {
+    dc.assignedCustomers.forEach(customer => {
+      const distance = haversineDistance(
+        customer.latitude,
+        customer.longitude,
+        dc.latitude,
+        dc.longitude
+      );
+      // Weight by demand (in standard units)
+      totalFlow += distance * (customer.demand * customer.conversionFactor);
+    });
+  });
+  
+  return totalFlow;
+}
+
+/**
  * Calculate total transportation cost for a given DC configuration
  */
 function calculateTransportationCost(
@@ -373,16 +396,11 @@ export function optimizeWithCost(
   let bestNumSites = 1;
   let bestFacilityCost = 0;
 
-  const maxTrialSites = Math.min(100, customers.length);
+  const maxTrialSites = Math.min(50, customers.length);
   const hasExistingSites = existingSites && existingSites.length > 0;
 
-  // In 'always' mode: existing sites are forced
-  // In 'potential' mode: existing sites compete, we try all combinations
-  
   if (existingSitesMode === 'always' && hasExistingSites) {
-    // ALWAYS MODE: Existing sites are forced, try adding 0 to N new sites
-    const numExistingSitesForced = existingSites!.length;
-
+    // ALWAYS MODE: Existing sites are forced, minimize total cost by adding optimal new sites
     for (let numNewSites = 0; numNewSites <= maxTrialSites; numNewSites++) {
       const dcs = buildDCConfiguration(
         customers,
@@ -411,13 +429,9 @@ export function optimizeWithCost(
       }
     }
   } else if (existingSitesMode === 'potential' && hasExistingSites) {
-    // POTENTIAL MODE: For each number of sites, compare:
-    // 1. Using existing sites (0 facility cost)
-    // 2. Using new k-means sites (with facility cost)
-    // Choose the configuration with LOWEST total cost
-    
+    // POTENTIAL MODE: Existing sites have 0 cost, must compare all configurations
     for (let numSites = 1; numSites <= maxTrialSites; numSites++) {
-      // Option A: Try using existing sites (if we have enough)
+      // Option A: Use existing sites only (if we have enough)
       if (numSites <= existingSites!.length) {
         const existingDcs = buildDCConfiguration(
           customers,
@@ -436,8 +450,6 @@ export function optimizeWithCost(
           existingSites
         );
         
-        console.log(`[${numSites} sites] Existing sites cost:`, existingCost);
-        
         if (existingCost.totalCost < bestTotalCost) {
           bestTotalCost = existingCost.totalCost;
           bestDcs = existingDcs;
@@ -447,7 +459,7 @@ export function optimizeWithCost(
         }
       }
       
-      // Option B: Try pure k-means (new sites with facility cost)
+      // Option B: Pure k-means (all new sites with facility cost)
       const newDcs = kMeansOptimization(customers, numSites);
       const newCost = calculateConfigurationCost(
         newDcs,
@@ -456,10 +468,8 @@ export function optimizeWithCost(
         costUnit,
         products,
         facilityCost,
-        undefined // No existing sites = all new sites pay facility cost
+        undefined // No existing sites = all pay facility cost
       );
-      
-      console.log(`[${numSites} sites] New k-means cost:`, newCost);
       
       if (newCost.totalCost < bestTotalCost) {
         bestTotalCost = newCost.totalCost;
@@ -467,6 +477,28 @@ export function optimizeWithCost(
         bestTransportationCost = newCost.transportationCost;
         bestNumSites = newDcs.length;
         bestFacilityCost = newCost.facilityCost;
+      }
+    }
+  } else {
+    // No existing sites: pure cost optimization
+    for (let numSites = 1; numSites <= maxTrialSites; numSites++) {
+      const dcs = kMeansOptimization(customers, numSites);
+      const cost = calculateConfigurationCost(
+        dcs,
+        transportationCostPerDistancePerUnit,
+        distanceUnit,
+        costUnit,
+        products,
+        facilityCost,
+        undefined
+      );
+      
+      if (cost.totalCost < bestTotalCost) {
+        bestTotalCost = cost.totalCost;
+        bestDcs = dcs;
+        bestTransportationCost = cost.transportationCost;
+        bestNumSites = numSites;
+        bestFacilityCost = cost.facilityCost;
       }
     }
   }
@@ -727,24 +759,20 @@ export function optimizeWithConstraints(
       existingSitesMode
     );
   } else if (mode === 'distance') {
-    // Distance-based optimization: add sites until ALL constraints are met
-    let currentNumSites = 1;
-    let constraintViolations = Infinity;
-    const maxSites = customers.length; // No limit - add as many sites as needed
+    // Distance-based optimization: find MINIMUM number of sites that meet constraints
+    // AND minimize total cost for that number of sites
     const targetDemandPercentage = constraints.demandPercentage || 100;
-
-    while (constraintViolations > 0 && currentNumSites <= maxSites) {
-      dcs = kMeansOptimization(customers, currentNumSites);
-      constraintViolations = 0;
-      let radiusViolations = 0;
-      let capacityViolations = 0;
-
-      // Check distance constraints based on demand percentage
-      dcs.forEach(dc => {
+    const maxSites = customers.length;
+    
+    // Helper function to check if configuration meets constraints
+    const meetsConstraints = (testDcs: DistributionCenter[]): boolean => {
+      let violations = 0;
+      
+      testDcs.forEach(dc => {
         if (dc.totalDemand === 0) return;
-
+        
+        // Check distance constraint
         let demandWithinRadius = 0;
-
         dc.assignedCustomers.forEach(customer => {
           const distance = haversineDistance(
             customer.latitude,
@@ -756,175 +784,173 @@ export function optimizeWithConstraints(
             demandWithinRadius += customer.demand * customer.conversionFactor;
           }
         });
-
-        const percentageWithinRadius =
-          (demandWithinRadius / dc.totalDemand) * 100;
-
+        
+        const percentageWithinRadius = (demandWithinRadius / dc.totalDemand) * 100;
         if (percentageWithinRadius < targetDemandPercentage) {
-          radiusViolations++;
-          constraintViolations++;
+          violations++;
+        }
+        
+        // Check capacity constraint
+        if (hasCapacityConstraint && dc.totalDemand > constraints.dcCapacity) {
+          violations++;
         }
       });
-
-      // Check capacity constraints
-      if (hasCapacityConstraint) {
-        dcs.forEach(dc => {
-          if (dc.totalDemand > constraints.dcCapacity) {
-            capacityViolations++;
-            constraintViolations++;
-          }
-        });
+      
+      return violations === 0;
+    };
+    
+    // Binary search to find minimum number of sites
+    let minFeasibleSites = maxSites;
+    let foundFeasible = false;
+    
+    // First, find if solution is feasible with existing sites (if in always mode)
+    if (existingSites && existingSites.length > 0 && existingSitesMode === 'always') {
+      const existingDcs = buildDCConfiguration(customers, 0, existingSites, 'always');
+      if (meetsConstraints(existingDcs)) {
+        dcs = existingDcs;
+        foundFeasible = true;
+        minFeasibleSites = existingSites.length;
       }
-
-      if (constraintViolations === 0) {
-        break;
-      }
-      currentNumSites++;
     }
-
-    if (constraintViolations > 0) {
-      if (currentNumSites > maxSites) {
-        warnings.push(
-          `Unable to find feasible solution even with ${maxSites} sites. Consider relaxing constraints.`
-        );
+    
+    // If not feasible with just existing sites, search for minimum sites needed
+    if (!foundFeasible) {
+      // Linear search from 1 to find minimum feasible
+      for (let numSites = 1; numSites <= maxSites; numSites++) {
+        let testDcs: DistributionCenter[];
+        
+        if (existingSites && existingSites.length > 0 && existingSitesMode === 'always') {
+          const numNewSites = Math.max(0, numSites - existingSites.length);
+          testDcs = buildDCConfiguration(customers, numNewSites, existingSites, 'always');
+        } else if (existingSites && existingSites.length > 0 && existingSitesMode === 'potential') {
+          // Try both existing and new sites, pick better one
+          let bestTestDcs = kMeansOptimization(customers, numSites);
+          let bestCost = costParams ? calculateConfigurationCost(
+            bestTestDcs,
+            costParams.transportationCostPerMilePerUnit,
+            costParams.distanceUnit,
+            costParams.costUnit,
+            products || [],
+            costParams.facilityCost,
+            undefined
+          ).totalCost : calculateTotalDistanceFlow(bestTestDcs);
+          
+          if (numSites <= existingSites.length) {
+            const existingTestDcs = buildDCConfiguration(customers, numSites, existingSites, 'use-existing-subset');
+            const existingCost = costParams ? calculateConfigurationCost(
+              existingTestDcs,
+              costParams.transportationCostPerMilePerUnit,
+              costParams.distanceUnit,
+              costParams.costUnit,
+              products || [],
+              costParams.facilityCost,
+              existingSites
+            ).totalCost : calculateTotalDistanceFlow(existingTestDcs);
+            
+            if (existingCost < bestCost) {
+              bestTestDcs = existingTestDcs;
+            }
+          }
+          testDcs = bestTestDcs;
+        } else {
+          testDcs = kMeansOptimization(customers, numSites);
+        }
+        
+        if (meetsConstraints(testDcs)) {
+          dcs = testDcs;
+          minFeasibleSites = numSites;
+          foundFeasible = true;
+          break;
+        }
       }
+    }
+    
+    if (!foundFeasible) {
+      warnings.push(
+        `Unable to find feasible solution even with ${maxSites} sites. Consider relaxing constraints.`
+      );
+      dcs = kMeansOptimization(customers, maxSites);
     }
   } else {
-    // Sites-based optimization: use ONLY the specified number of sites
+    // Sites-based optimization: MINIMIZE total distance-flow (or cost) for specified number of sites
     if (existingSites && existingSites.length > 0 && existingSitesMode === 'always') {
-      // Always include existing sites
-      const numExistingSites = existingSites.length;
-      const numNewSites = Math.max(0, numDCs - numExistingSites);
-
-      if (numNewSites === 0) {
-        // Only use existing sites
-        dcs = existingSites.map((site, index) => ({
-          id: `existing-${index + 1}`,
-          latitude: Number(site.latitude),
-          longitude: Number(site.longitude),
-          assignedCustomers: [],
-          totalDemand: 0,
-        }));
-
-        // Assign customers
-        customers.forEach(customer => {
-          let nearestDC = dcs[0];
-          let minDistance = Infinity;
-
-          dcs.forEach(dc => {
-            const distance = haversineDistance(
-              customer.latitude,
-              customer.longitude,
-              dc.latitude,
-              dc.longitude
-            );
-            if (distance < minDistance) {
-              minDistance = distance;
-              nearestDC = dc;
-            }
-          });
-
-          nearestDC.assignedCustomers.push(customer);
-          nearestDC.totalDemand += customer.demand * customer.conversionFactor;
-        });
-      } else {
-        // Some new sites + existing
-        const newDcs = kMeansOptimization(customers, numNewSites);
-
-        const existingDcs: DistributionCenter[] = existingSites.map((site, index) => ({
-          id: `existing-${index + 1}`,
-          latitude: Number(site.latitude),
-          longitude: Number(site.longitude),
-          assignedCustomers: [],
-          totalDemand: 0,
-        }));
-
-        const allDcs = [
-          ...existingDcs,
-          ...newDcs.map((dc, idx) => ({ ...dc, id: `new-${idx + 1}` })),
-        ];
-
-        // Reassign
-        allDcs.forEach(dc => {
-          dc.assignedCustomers = [];
-          dc.totalDemand = 0;
-        });
-
-        customers.forEach(customer => {
-          let nearestDC = allDcs[0];
-          let minDistance = Infinity;
-
-          allDcs.forEach(dc => {
-            const distance = haversineDistance(
-              customer.latitude,
-              customer.longitude,
-              dc.latitude,
-              dc.longitude
-            );
-            if (distance < minDistance) {
-              minDistance = distance;
-              nearestDC = dc;
-            }
-          });
-
-          nearestDC.assignedCustomers.push(customer);
-          nearestDC.totalDemand += customer.demand * customer.conversionFactor;
-        });
-
-        dcs = allDcs;
-      }
-    } else if (existingSites && existingSites.length > 0 && existingSitesMode === 'potential') {
-      // Treat existing sites as potential: run k-means then snap if close
-      const tempDcs = kMeansOptimization(customers, numDCs);
-
-      dcs = tempDcs.map(dc => {
-        let closest: ExistingSite | undefined;
-        let minDist = 50; // 50 km threshold
-        for (const site of existingSites) {
-          const dist = haversineDistance(
-            dc.latitude,
-            dc.longitude,
-            Number(site.latitude),
-            Number(site.longitude)
-          );
-          if (dist < minDist) {
-            minDist = dist;
-            closest = site;
-          }
+      // Always include existing sites, minimize distance-flow by optimizing new site placement
+      const numNewSites = Math.max(0, numDCs - existingSites.length);
+      
+      // Try multiple k-means runs to find best configuration
+      let bestConfig: DistributionCenter[] = [];
+      let bestFlow = Infinity;
+      const numTrials = 10; // Multiple random initializations
+      
+      for (let trial = 0; trial < numTrials; trial++) {
+        const trialDcs = buildDCConfiguration(customers, numNewSites, existingSites, 'always');
+        const flow = costParams && products 
+          ? calculateConfigurationCost(
+              trialDcs,
+              costParams.transportationCostPerMilePerUnit,
+              costParams.distanceUnit,
+              costParams.costUnit,
+              products,
+              costParams.facilityCost,
+              existingSites
+            ).totalCost
+          : calculateTotalDistanceFlow(trialDcs);
+        
+        if (flow < bestFlow) {
+          bestFlow = flow;
+          bestConfig = trialDcs;
         }
-        return closest
-          ? {
-              ...dc,
-              latitude: Number(closest.latitude),
-              longitude: Number(closest.longitude),
-            }
-          : dc;
-      });
-
-      // Reassign customers post-snap
-      dcs.forEach(dc => { dc.assignedCustomers = []; dc.totalDemand = 0; });
-      customers.forEach(customer => {
-        let nearestDC = dcs[0];
-        let minDistance = Infinity;
-
-        dcs.forEach(dc => {
-          const distance = haversineDistance(
-            customer.latitude,
-            customer.longitude,
-            dc.latitude,
-            dc.longitude
-          );
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestDC = dc;
-          }
-        });
-
-        nearestDC.assignedCustomers.push(customer);
-        nearestDC.totalDemand += customer.demand * customer.conversionFactor;
-      });
+      }
+      
+      dcs = bestConfig;
+    } else if (existingSites && existingSites.length > 0 && existingSitesMode === 'potential') {
+      // Potential mode: compare using existing sites vs k-means, pick configuration with minimum flow/cost
+      let bestConfig: DistributionCenter[] = [];
+      let bestFlow = Infinity;
+      
+      // Option A: Use k-means (all new sites)
+      const kMeansDcs = kMeansOptimization(customers, numDCs);
+      const kMeansFlow = costParams && products
+        ? calculateConfigurationCost(
+            kMeansDcs,
+            costParams.transportationCostPerMilePerUnit,
+            costParams.distanceUnit,
+            costParams.costUnit,
+            products,
+            costParams.facilityCost,
+            undefined
+          ).totalCost
+        : calculateTotalDistanceFlow(kMeansDcs);
+      
+      if (kMeansFlow < bestFlow) {
+        bestFlow = kMeansFlow;
+        bestConfig = kMeansDcs;
+      }
+      
+      // Option B: Use existing sites (if we have enough)
+      if (numDCs <= existingSites.length) {
+        const existingDcs = buildDCConfiguration(customers, numDCs, existingSites, 'use-existing-subset');
+        const existingFlow = costParams && products
+          ? calculateConfigurationCost(
+              existingDcs,
+              costParams.transportationCostPerMilePerUnit,
+              costParams.distanceUnit,
+              costParams.costUnit,
+              products,
+              costParams.facilityCost,
+              existingSites
+            ).totalCost
+          : calculateTotalDistanceFlow(existingDcs);
+        
+        if (existingFlow < bestFlow) {
+          bestFlow = existingFlow;
+          bestConfig = existingDcs;
+        }
+      }
+      
+      dcs = bestConfig;
     } else {
-      // Standard optimization without existing sites
+      // Standard optimization without existing sites: minimize distance-flow
       if (hasCapacityConstraint) {
         const maxPossibleCapacity = numDCs * constraints.dcCapacity;
         if (totalDemand > maxPossibleCapacity) {
@@ -942,7 +968,32 @@ export function optimizeWithConstraints(
         }
       }
 
-      dcs = kMeansOptimization(customers, numDCs);
+      // Run k-means multiple times with different initializations, pick best
+      let bestConfig: DistributionCenter[] = [];
+      let bestFlow = Infinity;
+      const numTrials = 10;
+      
+      for (let trial = 0; trial < numTrials; trial++) {
+        const trialDcs = kMeansOptimization(customers, numDCs);
+        const flow = costParams && products
+          ? calculateConfigurationCost(
+              trialDcs,
+              costParams.transportationCostPerMilePerUnit,
+              costParams.distanceUnit,
+              costParams.costUnit,
+              products,
+              costParams.facilityCost,
+              undefined
+            ).totalCost
+          : calculateTotalDistanceFlow(trialDcs);
+        
+        if (flow < bestFlow) {
+          bestFlow = flow;
+          bestConfig = trialDcs;
+        }
+      }
+      
+      dcs = bestConfig;
     }
   }
 
