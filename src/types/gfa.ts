@@ -22,11 +22,12 @@ export interface Customer {
   country: string;
   latitude: number;
   longitude: number;
-  product: string;
-  demand: number;
-  unitOfMeasure: string;
-  conversionFactor: number;
   included?: boolean;
+  // Legacy fields for backward compatibility - will be removed in future
+  product?: string;
+  demand?: number;
+  unitOfMeasure?: string;
+  conversionFactor?: number;
 }
 
 export interface Demand {

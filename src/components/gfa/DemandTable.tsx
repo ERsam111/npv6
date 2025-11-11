@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2 } from "lucide-react";
-import { CustomerLocation, Demand, Product } from "@/types/gfa";
+import { Customer, Demand, Product } from "@/types/gfa";
 import { toast } from "sonner";
 import { getConversionFactor, getAvailableUnits } from "@/utils/unitConversions";
 import { Card } from "@/components/ui/card";
 
 interface DemandTableProps {
   demands: Demand[];
-  customers: CustomerLocation[];
+  customers: Customer[];
   products: Product[];
   onAddDemand: (demand: Demand) => void;
   onRemoveDemand: (id: string) => void;

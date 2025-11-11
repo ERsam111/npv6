@@ -5,7 +5,7 @@ import * as XLSX from "xlsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Customer, DistributionCenter, OptimizationSettings, Product, ExistingSite } from "@/types/gfa";
+import { Customer, DistributionCenter, OptimizationSettings, Product, ExistingSite, Demand } from "@/types/gfa";
 import { optimizeWithConstraints } from "@/utils/geoCalculations";
 import { exportReport } from "@/utils/exportReport";
 import { toast } from "sonner";
@@ -57,6 +57,7 @@ const GFA = () => {
   }, [location.state, projects]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [demands, setDemands] = useState<Demand[]>([]);
   const [existingSites, setExistingSites] = useState<ExistingSite[]>([]);
   const [dcs, setDcs] = useState<DistributionCenter[]>([]);
   const [feasible, setFeasible] = useState(true);
@@ -91,12 +92,14 @@ const GFA = () => {
         if (inputData) {
           setCustomers(inputData.customers || []);
           setProducts(inputData.products || []);
+          setDemands(inputData.demands || []);
           setExistingSites(inputData.existingSites || []);
           setSettings(inputData.settings || settings);
         } else {
           // Clear all data for new/blank scenario
           setCustomers([]);
           setProducts([]);
+          setDemands([]);
           setExistingSites([]);
           setSettings({
             mode: 'sites',
@@ -138,18 +141,19 @@ const GFA = () => {
 
   // Save input data whenever it changes
   useEffect(() => {
-    if (currentScenario && (customers.length > 0 || products.length > 0 || existingSites.length > 0)) {
+    if (currentScenario && (customers.length > 0 || products.length > 0 || demands.length > 0 || existingSites.length > 0)) {
       const saveData = async () => {
         await saveScenarioInput(currentScenario.id, {
           customers,
           products,
+          demands,
           existingSites,
           settings
         }, true); // Background save, non-blocking
       };
       saveData();
     }
-  }, [customers, products, existingSites, settings, currentScenario?.id]);
+  }, [customers, products, demands, existingSites, settings, currentScenario?.id]);
 
   // Extract unique products from customers - auto-populate
   useEffect(() => {
@@ -472,63 +476,23 @@ const GFA = () => {
                   {activeTable === "customers" && <GFAEditableTable tableType="customers" data={customers} onDataChange={setCustomers} onGeocode={handleGeocodeCustomer} />}
                   {activeTable === "demand" && (
                     <DemandTable
-                      demands={customers.filter(c => c.product).map(c => ({
-                        id: c.id,
-                        customerId: c.id,
-                        customerName: c.name,
-                        product: c.product,
-                        quantity: c.demand,
-                        unitOfMeasure: c.unitOfMeasure,
-                        conversionFactor: c.conversionFactor,
-                      }))}
-                      customers={customers.filter((c, idx, self) => 
-                        idx === self.findIndex(item => item.name === c.name && item.city === c.city)
-                      ).map(c => ({
-                        id: c.id,
-                        name: c.name,
-                        city: c.city,
-                        country: c.country,
-                        latitude: c.latitude,
-                        longitude: c.longitude,
-                        included: c.included !== false,
-                      }))}
+                      demands={demands}
+                      customers={customers}
                       products={products}
                       onAddDemand={(demand) => {
-                        const customerLoc = customers.find(c => c.id === demand.customerId);
-                        if (!customerLoc) {
-                          toast.error("Customer location not found");
-                          return;
-                        }
-                        const newCustomer = {
-                          id: `customer-${Date.now()}-${Math.random()}`,
-                          name: customerLoc.name,
-                          city: customerLoc.city,
-                          country: customerLoc.country,
-                          latitude: customerLoc.latitude,
-                          longitude: customerLoc.longitude,
-                          product: demand.product,
-                          demand: demand.quantity,
-                          unitOfMeasure: demand.unitOfMeasure,
-                          conversionFactor: demand.conversionFactor,
-                          included: customerLoc.included !== false,
-                        };
-                        setCustomers([...customers, newCustomer]);
+                        setDemands([...demands, demand]);
+                        toast.success("Demand added successfully");
                       }}
                       onRemoveDemand={(id) => {
-                        const updatedCustomers = customers.filter(c => c.id !== id);
-                        setCustomers(updatedCustomers);
+                        const updatedDemands = demands.filter(d => d.id !== id);
+                        setDemands(updatedDemands);
+                        toast.success("Demand removed");
                       }}
                       onUpdateDemand={(id, updates) => {
-                        const updatedCustomers = customers.map(c => 
-                          c.id === id ? { 
-                            ...c, 
-                            product: updates.product || c.product,
-                            demand: updates.quantity !== undefined ? updates.quantity : c.demand,
-                            unitOfMeasure: updates.unitOfMeasure || c.unitOfMeasure,
-                            conversionFactor: updates.conversionFactor || c.conversionFactor,
-                          } : c
+                        const updatedDemands = demands.map(d => 
+                          d.id === id ? { ...d, ...updates } : d
                         );
-                        setCustomers(updatedCustomers);
+                        setDemands(updatedDemands);
                       }}
                     />
                   )}
