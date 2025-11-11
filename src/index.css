@@ -241,33 +241,6 @@ All colors MUST be HSL.
   .animate-fade-in {
     animation: fade-in 1s ease-out;
   }
-
-  /* Network mesh background animation */
-  @keyframes network-pulse {
-    0%, 100% {
-      opacity: 0.3;
-    }
-    50% {
-      opacity: 0.6;
-    }
-  }
-
-  .network-mesh {
-    position: absolute;
-    inset: 0;
-    background-image: 
-      linear-gradient(90deg, hsl(142 70% 45% / 0.1) 1px, transparent 1px),
-      linear-gradient(180deg, hsl(142 70% 45% / 0.1) 1px, transparent 1px);
-    background-size: 80px 80px;
-  }
-
-  .network-dots {
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(circle, hsl(142 70% 45% / 0.15) 2px, transparent 2px);
-    background-size: 80px 80px;
-    animation: network-pulse 4s ease-in-out infinite;
-  }
   
   /* Always show horizontal scrollbar */
   .scrollbar-visible {

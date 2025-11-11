@@ -164,99 +164,53 @@ const Index = () => {
       </nav>
 
       {/* Hero Section */}
-      <section id="features" className="relative overflow-hidden min-h-[90vh] flex items-center border-b">
-        {/* Network Mesh Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gfa-green/5 via-forecasting-purple/5 to-network-blue/5" />
-        <div className="network-mesh opacity-30" />
-        <div className="network-dots" />
+      <section id="features" className="relative overflow-hidden border-b">
+        {/* Animated Mesh Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gfa-green/10 via-forecasting-purple/10 to-network-blue/10" />
+        <div className="absolute inset-0 opacity-40" style={{
+          background: 'radial-gradient(circle at 20% 50%, hsl(142 70% 45% / 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 30%, hsl(270 65% 55% / 0.15) 0%, transparent 50%), radial-gradient(circle at 40% 80%, hsl(220 85% 55% / 0.15) 0%, transparent 50%)'
+        }} />
         
-        {/* Animated network connections */}
-        <div className="absolute inset-0 opacity-10">
-          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" style={{ stopColor: 'hsl(142 70% 45%)', stopOpacity: 0 }} />
-                <stop offset="50%" style={{ stopColor: 'hsl(142 70% 45%)', stopOpacity: 0.5 }} />
-                <stop offset="100%" style={{ stopColor: 'hsl(142 70% 45%)', stopOpacity: 0 }} />
-              </linearGradient>
-            </defs>
-            <line x1="10%" y1="20%" x2="30%" y2="40%" stroke="url(#lineGradient)" strokeWidth="2" />
-            <line x1="30%" y1="40%" x2="50%" y2="30%" stroke="url(#lineGradient)" strokeWidth="2" />
-            <line x1="50%" y1="30%" x2="70%" y2="50%" stroke="url(#lineGradient)" strokeWidth="2" />
-            <line x1="70%" y1="50%" x2="90%" y2="35%" stroke="url(#lineGradient)" strokeWidth="2" />
-            <line x1="20%" y1="60%" x2="40%" y2="70%" stroke="url(#lineGradient)" strokeWidth="2" />
-            <line x1="40%" y1="70%" x2="60%" y2="80%" stroke="url(#lineGradient)" strokeWidth="2" />
-            <line x1="60%" y1="80%" x2="80%" y2="65%" stroke="url(#lineGradient)" strokeWidth="2" />
-            <circle cx="10%" cy="20%" r="4" fill="hsl(142 70% 45%)" opacity="0.6" />
-            <circle cx="30%" cy="40%" r="4" fill="hsl(270 65% 55%)" opacity="0.6" />
-            <circle cx="50%" cy="30%" r="4" fill="hsl(220 85% 55%)" opacity="0.6" />
-            <circle cx="70%" cy="50%" r="4" fill="hsl(25 90% 55%)" opacity="0.6" />
-            <circle cx="90%" cy="35%" r="4" fill="hsl(142 70% 45%)" opacity="0.6" />
-          </svg>
-        </div>
+        {/* Floating Orbs */}
+        <div className="absolute top-20 left-10 w-64 h-64 bg-gradient-to-br from-gfa-green/30 to-transparent rounded-full blur-3xl animate-orb" />
+        <div className="absolute top-40 right-20 w-80 h-80 bg-gradient-to-br from-forecasting-purple/30 to-transparent rounded-full blur-3xl animate-orb" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-20 left-1/3 w-72 h-72 bg-gradient-to-br from-network-blue/30 to-transparent rounded-full blur-3xl animate-orb" style={{ animationDelay: '4s' }} />
+        <div className="absolute bottom-40 right-1/4 w-96 h-96 bg-gradient-to-br from-inventory-orange/20 to-transparent rounded-full blur-3xl animate-orb" style={{ animationDelay: '6s' }} />
         
-        {/* Floating gradient orbs */}
-        <div className="absolute top-20 left-10 w-64 h-64 bg-gradient-to-br from-gfa-green/20 to-transparent rounded-full blur-3xl animate-orb" />
-        <div className="absolute top-40 right-20 w-80 h-80 bg-gradient-to-br from-forecasting-purple/20 to-transparent rounded-full blur-3xl animate-orb" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-20 left-1/3 w-72 h-72 bg-gradient-to-br from-network-blue/20 to-transparent rounded-full blur-3xl animate-orb" style={{ animationDelay: '4s' }} />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
-          <div className="max-w-4xl">
-            <h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tight mb-6 animate-fade-in">
-              <span className="bg-gradient-to-r from-gfa-green via-forecasting-purple to-network-blue bg-clip-text text-transparent">
-                Supply Chain Optimization
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 relative">
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8 animate-fade-in">
+              <Sparkles className="h-4 w-4" />
+              <span>AI-Powered Supply Chain Intelligence</span>
+            </div>
+
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-fade-in">
+              <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+                Optimize Your Supply Chain
               </span>
-              <span className="text-gfa-green">.</span>
             </h1>
 
-            <p className="text-xl text-muted-foreground mb-12 max-w-2xl animate-fade-in">
-              AI-powered analytics platform for network design, demand forecasting, and inventory optimization
+            <p className="text-xl sm:text-2xl text-muted-foreground mb-12 leading-relaxed animate-fade-in">
+              Advanced analytics platform with intelligent assistant for network design, demand planning, and inventory optimization
             </p>
 
-            <div className="mt-16 animate-fade-in">
-              <p className="text-base text-muted-foreground mb-6">Our results tell a compelling story:</p>
-              <div className="w-20 h-1 bg-gradient-to-r from-gfa-green to-forecasting-purple mb-10" />
-              
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-                <div className="group hover:scale-105 transition-transform">
-                  <div className="text-5xl md:text-6xl font-bold bg-gradient-to-br from-gfa-green to-gfa-green/70 bg-clip-text text-transparent mb-3">6</div>
-                  <div className="text-sm text-muted-foreground">optimization<br />modules</div>
-                </div>
-                <div className="group hover:scale-105 transition-transform">
-                  <div className="text-5xl md:text-6xl font-bold bg-gradient-to-br from-forecasting-purple to-forecasting-purple/70 bg-clip-text text-transparent mb-3">100+</div>
-                  <div className="text-sm text-muted-foreground">delivered<br />projects</div>
-                </div>
-                <div className="group hover:scale-105 transition-transform">
-                  <div className="text-5xl md:text-6xl font-bold bg-gradient-to-br from-network-blue to-network-blue/70 bg-clip-text text-transparent mb-3">AI</div>
-                  <div className="text-sm text-muted-foreground">powered<br />insights</div>
-                </div>
-                <div className="group hover:scale-105 transition-transform">
-                  <div className="text-5xl md:text-6xl font-bold bg-gradient-to-br from-inventory-orange to-inventory-orange/70 bg-clip-text text-transparent mb-3">24/7</div>
-                  <div className="text-sm text-muted-foreground">intelligent<br />assistant</div>
-                </div>
-              </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in">
+              <Button size="lg" className="text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all" onClick={() => navigate("/auth")}>
+                Get Started
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button size="lg" variant="outline" className="text-lg px-8 py-6" onClick={() => navigate("/auth")}>
+                Sign In
+              </Button>
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-16 animate-fade-in">
-            <Button 
-              size="lg" 
-              className="text-base px-8 py-6 shadow-lg hover:shadow-xl transition-all" 
-              onClick={() => navigate("/auth")}
-            >
-              Get Started
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="text-base px-8 py-6" 
-              onClick={() => navigate("/auth")}
-            >
-              Sign In
-            </Button>
+            {/* Benefits Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
+              {benefits.map((benefit, index) => <div key={index} className="flex items-center gap-2 text-sm text-muted-foreground bg-card/50 backdrop-blur-sm rounded-lg p-3 border">
+                  <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span className="text-left">{benefit}</span>
+                </div>)}
+            </div>
           </div>
         </div>
       </section>
