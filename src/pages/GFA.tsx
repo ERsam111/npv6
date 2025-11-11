@@ -518,6 +518,18 @@ const GFA = () => {
                         const updatedCustomers = customers.filter(c => c.id !== id);
                         setCustomers(updatedCustomers);
                       }}
+                      onUpdateDemand={(id, updates) => {
+                        const updatedCustomers = customers.map(c => 
+                          c.id === id ? { 
+                            ...c, 
+                            product: updates.product || c.product,
+                            demand: updates.quantity !== undefined ? updates.quantity : c.demand,
+                            unitOfMeasure: updates.unitOfMeasure || c.unitOfMeasure,
+                            conversionFactor: updates.conversionFactor || c.conversionFactor,
+                          } : c
+                        );
+                        setCustomers(updatedCustomers);
+                      }}
                     />
                   )}
                   {activeTable === "products" && <GFAEditableTable tableType="products" data={products} onDataChange={setProducts} />}

@@ -282,6 +282,18 @@ export function GFAInputPanel({
               const updatedCustomers = customers.filter(c => c.id !== id);
               onCustomersChange(updatedCustomers);
             }}
+            onUpdateDemand={(id, updates) => {
+              const updatedCustomers = customers.map(c => 
+                c.id === id ? { 
+                  ...c, 
+                  product: updates.product || c.product,
+                  demand: updates.quantity !== undefined ? updates.quantity : c.demand,
+                  unitOfMeasure: updates.unitOfMeasure || c.unitOfMeasure,
+                  conversionFactor: updates.conversionFactor || c.conversionFactor,
+                } : c
+              );
+              onCustomersChange(updatedCustomers);
+            }}
           />
         </CardContent>
       </Card>
