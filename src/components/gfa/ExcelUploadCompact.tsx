@@ -120,31 +120,49 @@ export function ExcelUploadCompact({
 
         if (workbook.Sheets["Existing Sites"] && onExistingSitesUpload) {
           const sitesData = XLSX.utils.sheet_to_json(workbook.Sheets["Existing Sites"]);
-          const sites: ExistingSite[] = sitesData.map((row: any, index: number) => ({
-            id: `site-${Date.now()}-${index}`,
-            name: (row.Name || row.name || row.Site || "").toString().trim(),
-            city: (row.City || row.city || "").toString().trim(),
-            country: (row.Country || row.country || "").toString().trim(),
-            latitude: parseFloat(row.Latitude || row.latitude || row.Lat || 0),
-            longitude: parseFloat(row.Longitude || row.longitude || row.Lng || 0),
-            capacity: parseFloat(row.Capacity || row.capacity || 0),
-            capacityUnit: (row.CapacityUnit || row["Capacity Unit"] || row.Unit || "m3").toString().trim(),
-          })).filter(s => 
-            s.name && 
-            s.capacity > 0 && 
-            !isNaN(s.latitude) && 
-            !isNaN(s.longitude) &&
-            s.latitude >= -90 && 
-            s.latitude <= 90 && 
-            s.longitude >= -180 && 
-            s.longitude <= 180
-          );
+          console.log("Raw existing sites data from Excel:", sitesData);
+          
+          const sites: ExistingSite[] = sitesData.map((row: any, index: number) => {
+            const site = {
+              id: `site-${Date.now()}-${index}`,
+              name: (row.Name || row.name || row.Site || "").toString().trim(),
+              city: (row.City || row.city || "").toString().trim(),
+              country: (row.Country || row.country || "").toString().trim(),
+              latitude: parseFloat(row.Latitude || row.latitude || row.Lat || 0),
+              longitude: parseFloat(row.Longitude || row.longitude || row.Lng || 0),
+              capacity: parseFloat(row.Capacity || row.capacity || 0),
+              capacityUnit: (row.CapacityUnit || row["Capacity Unit"] || row.Unit || "m3").toString().trim(),
+            };
+            console.log(`Site ${index}:`, site);
+            return site;
+          }).filter(s => {
+            const isValid = s.name && 
+              s.capacity > 0 && 
+              !isNaN(s.latitude) && 
+              !isNaN(s.longitude) &&
+              s.latitude >= -90 && 
+              s.latitude <= 90 && 
+              s.longitude >= -180 && 
+              s.longitude <= 180;
+            
+            if (!isValid) {
+              console.log("Invalid site filtered out:", s, {
+                hasName: !!s.name,
+                hasCapacity: s.capacity > 0,
+                validLat: !isNaN(s.latitude) && s.latitude >= -90 && s.latitude <= 90,
+                validLng: !isNaN(s.longitude) && s.longitude >= -180 && s.longitude <= 180
+              });
+            }
+            return isValid;
+          });
 
+          console.log(`Valid sites after filtering: ${sites.length} out of ${sitesData.length}`);
+          
           if (sites.length > 0) {
             onExistingSitesUpload(sites, uploadMode);
-            toast.success(`Imported ${sites.length} sites`);
+            toast.success(`Imported ${sites.length} existing site(s)`);
           } else if (sitesData.length > 0) {
-            toast.error("No valid sites found - check coordinates and capacity");
+            toast.error(`No valid sites found. Check: name, capacity > 0, valid coordinates (-90≤lat≤90, -180≤lng≤180)`);
           }
         }
 

@@ -92,6 +92,25 @@ const GFA = () => {
           setProducts(inputData.products || []);
           setExistingSites(inputData.existingSites || []);
           setSettings(inputData.settings || settings);
+        } else {
+          // Clear all data for new/blank scenario
+          setCustomers([]);
+          setProducts([]);
+          setExistingSites([]);
+          setSettings({
+            mode: 'sites',
+            numDCs: 3,
+            maxRadius: 50,
+            demandPercentage: 100,
+            dcCapacity: 0,
+            capacityUnit: 'm3',
+            transportationCostPerMilePerUnit: 0.5,
+            facilityCost: 100000,
+            distanceUnit: 'km',
+            costUnit: 'm3',
+            includeExistingSites: false,
+            existingSitesMode: 'potential'
+          });
         }
 
         // Load saved output data
@@ -104,11 +123,17 @@ const GFA = () => {
           if (outputData.dcs?.length > 0) {
             setActiveTab("results");
           }
+        } else {
+          // Clear output data for new scenario
+          setDcs([]);
+          setFeasible(true);
+          setWarnings([]);
+          setCostBreakdown(undefined);
         }
       }
     };
     loadScenarioData();
-  }, [currentScenario?.id]);
+  }, [currentScenario]);
 
   // Save input data whenever it changes
   useEffect(() => {
@@ -361,7 +386,8 @@ const GFA = () => {
       toast.error("Failed to geocode address");
     }
   };
-  return <div className="min-h-screen flex flex-col bg-background">
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Project & Scenario Navigation */}
       <div className="border-b border-gfa/20 bg-gradient-to-r from-gfa-light to-transparent">
         <ProjectScenarioNav currentProjectId={currentProject?.id} currentScenarioId={currentScenario?.id} moduleType="gfa" moduleName="Green Field Analysis" onProjectChange={project => {
@@ -489,6 +515,7 @@ const GFA = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </div>;
+    </div>
+  );
 };
 export default GFA;
