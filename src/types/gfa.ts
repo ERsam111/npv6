@@ -25,6 +25,27 @@ export interface Customer {
   demand: number;
   unitOfMeasure: string; // e.g., "pallets", "m3", "tonnes", "sq2"
   conversionFactor: number; // conversion to standard unit (m3)
+  included?: boolean; // whether this customer is included in analysis (optional for backward compatibility)
+}
+
+export interface Demand {
+  id: string;
+  customerId: string;
+  customerName: string;
+  product: string;
+  quantity: number;
+  unitOfMeasure: string;
+  conversionFactor: number;
+}
+
+export interface CustomerLocation {
+  id: string;
+  name: string;
+  city: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  included: boolean;
 }
 
 export interface ExistingSite {

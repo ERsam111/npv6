@@ -1,11 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, Trash2 } from "lucide-react";
-import { Customer, Product, OptimizationSettings, ExistingSite } from "@/types/gfa";
+import { Upload, Trash2, Users, TrendingUp } from "lucide-react";
+import { Customer, Product, OptimizationSettings, ExistingSite, CustomerLocation, Demand } from "@/types/gfa";
 import { ExcelUpload } from "./ExcelUpload";
 import { GFAEditableTable } from "./GFAEditableTable";
 import { CostParameters } from "./CostParameters";
 import { CustomerMapView } from "./CustomerMapView";
+import { CustomerTable } from "./CustomerTable";
+import { DemandTable } from "./DemandTable";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useState, useMemo } from "react";
 
 interface GFAInputPanelProps {
   customers: Customer[];
@@ -40,9 +43,69 @@ export function GFAInputPanel({
   onExistingSitesChange,
   onSettingsChange,
 }: GFAInputPanelProps) {
-  // Use the same min width for BOTH tables so they align and scroll independently.
-  // Adjust this number to suit your column set.
-  const TABLE_MIN_WIDTH_CLS = "min-w-[100px]";
+  const [viewMode, setViewMode] = useState<'combined' | 'split'>('combined');
+  
+  // Extract unique customer locations from customers
+  const uniqueCustomers = useMemo((): CustomerLocation[] => {
+    const customerMap = new Map<string, CustomerLocation>();
+    customers.forEach(c => {
+      const key = `${c.name}-${c.city}-${c.country}`;
+      if (!customerMap.has(key)) {
+        customerMap.set(key, {
+          id: c.id,
+          name: c.name,
+          city: c.city,
+          country: c.country,
+          latitude: c.latitude,
+          longitude: c.longitude,
+          included: c.included !== false,
+        });
+      }
+    });
+    return Array.from(customerMap.values());
+  }, [customers]);
+
+  const handleAddCustomerLocation = (newCustomer: any) => {
+    // Don't add to customers array yet - wait for demand data
+    toast.success("Customer location added. Now add demand data for this customer.");
+  };
+
+  const handleAddDemand = (demand: Demand) => {
+    const customerLoc = uniqueCustomers.find(c => c.id === demand.customerId);
+    if (!customerLoc) {
+      toast.error("Customer location not found");
+      return;
+    }
+    
+    const newCustomer: Customer = {
+      id: `customer-${Date.now()}-${Math.random()}`,
+      name: customerLoc.name,
+      city: customerLoc.city,
+      country: customerLoc.country,
+      latitude: customerLoc.latitude,
+      longitude: customerLoc.longitude,
+      product: demand.product,
+      demand: demand.quantity,
+      unitOfMeasure: demand.unitOfMeasure,
+      conversionFactor: demand.conversionFactor,
+      included: customerLoc.included,
+    };
+    
+    onCustomersChange([...customers, newCustomer]);
+  };
+
+  const handleRemoveCustomerLocation = (id: string) => {
+    // Remove all customer entries with this location
+    const updatedCustomers = customers.filter(c => c.id !== id);
+    onCustomersChange(updatedCustomers);
+  };
+
+  const handleUpdateCustomerLocation = (id: string, updates: any) => {
+    const updatedCustomers = customers.map(c => 
+      c.id === id ? { ...c, ...updates } : c
+    );
+    onCustomersChange(updatedCustomers);
+  };
 
   const handleBulkUpload = (newCustomers: Customer[], mode: "append" | "overwrite") => {
     if (mode === "overwrite") {
@@ -77,7 +140,6 @@ export function GFAInputPanel({
 
     try {
       toast.info("Geocoding address...");
-      // Integrate geocoding via your backend or a serverless fn here
       toast.success("Address geocoded successfully");
     } catch (error) {
       toast.error("Failed to geocode address");
@@ -152,44 +214,154 @@ export function GFAInputPanel({
         </CardContent>
       </Card>
 
-      {/* Section 2: Customers (own bottom scrollbar; same width as Products) */}
+      {/* View Mode Toggle */}
       <Card className="shadow-sm">
-        <CardHeader className="pb-2 pt-3 px-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm">Customers</CardTitle>
-              <CardDescription className="text-[11px]">
-                Edit customers, geocode addresses, and manage rows
-              </CardDescription>
-            </div>
-            {customers.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                className="gap-1.5 h-7 text-[11px]"
-                onClick={handleClearCustomers}
-              >
-                <Trash2 className="h-3 w-3" />
-                Clear Customers
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="pt-2 px-3 pb-3">
-          {/* Make the scrollbar belong only to the table area.
-             -mx-3 lets the scrollbar span the full card width (since CardContent has px-3). */}
-          <div className="-mx-3 overflow-x-auto overscroll-x-contain pb-2">
-            <div className={TABLE_MIN_WIDTH_CLS}>
-              <GFAEditableTable
-                tableType="customers"
-                data={customers}
-                onDataChange={onCustomersChange}
-                onGeocode={handleGeocodeCustomer}
-              />
-            </div>
+        <CardContent className="pt-3 px-3 pb-3">
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'combined' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('combined')}
+              className="flex-1 h-7 text-xs"
+            >
+              Combined View
+            </Button>
+            <Button
+              variant={viewMode === 'split' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('split')}
+              className="flex-1 h-7 text-xs"
+            >
+              Split View (Customer + Demand)
+            </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Combined View */}
+      {viewMode === 'combined' && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2 pt-3 px-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm">Customer & Demand Data</CardTitle>
+                <CardDescription className="text-[11px]">
+                  All customer and demand information in one table
+                </CardDescription>
+              </div>
+              {customers.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1.5 h-7 text-[11px]"
+                  onClick={handleClearCustomers}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-2 px-3 pb-3">
+            <div className="-mx-3 overflow-x-auto overscroll-x-contain pb-2">
+              <div className="min-w-[900px]">
+                <GFAEditableTable
+                  tableType="customers"
+                  data={customers}
+                  onDataChange={onCustomersChange}
+                  onGeocode={handleGeocodeCustomer}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Split View */}
+      {viewMode === 'split' && (
+        <>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  <div>
+                    <CardTitle className="text-sm">Customer Locations</CardTitle>
+                    <CardDescription className="text-[11px]">
+                      Manage customer names, cities, and coordinates
+                    </CardDescription>
+                  </div>
+                </div>
+                {uniqueCustomers.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5 h-7 text-[11px]"
+                    onClick={handleClearCustomers}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2 px-3 pb-3">
+              <CustomerTable
+                customers={uniqueCustomers.map(c => ({...c, included: true}))}
+                onAddCustomer={handleAddCustomerLocation}
+                onRemoveCustomer={handleRemoveCustomerLocation}
+                onUpdateCustomer={handleUpdateCustomerLocation}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <div>
+                    <CardTitle className="text-sm">Demand Data</CardTitle>
+                    <CardDescription className="text-[11px]">
+                      Product demands per customer
+                    </CardDescription>
+                  </div>
+                </div>
+                {customers.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5 h-7 text-[11px]"
+                    onClick={handleClearCustomers}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2 px-3 pb-3">
+              <DemandTable
+                demands={customers.map(c => ({
+                  id: c.id,
+                  customerId: c.id,
+                  customerName: c.name,
+                  product: c.product,
+                  quantity: c.demand,
+                  unitOfMeasure: c.unitOfMeasure,
+                  conversionFactor: c.conversionFactor,
+                }))}
+                customers={uniqueCustomers.map(c => ({...c, included: true}))}
+                onAddDemand={handleAddDemand}
+                onRemoveDemand={(id) => {
+                  const updatedCustomers = customers.filter(c => c.id !== id);
+                  onCustomersChange(updatedCustomers);
+                }}
+              />
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Section 3: Cost Parameters */}
       <Card className="shadow-sm">
@@ -231,7 +403,7 @@ export function GFAInputPanel({
         </CardHeader>
         <CardContent className="pt-2 px-3 pb-3">
           <div className="-mx-3 overflow-x-auto overscroll-x-contain pb-2">
-            <div className={TABLE_MIN_WIDTH_CLS}>
+            <div className="min-w-[900px]">
               <GFAEditableTable tableType="products" data={products} onDataChange={onProductsChange} />
             </div>
           </div>
