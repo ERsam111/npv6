@@ -54,6 +54,7 @@ const Index = () => {
     details: "Optimize production schedules, capacity planning, and resource allocation with intelligent scheduling algorithms",
     route: "/production-planning",
     color: "accent",
+    comingSoon: true,
     aiFeature: "Smart scheduling & capacity optimization"
   }];
   const benefits = ["Multi-echelon optimization", "Real-time insights", "Interactive assistant", "Smart decision support"];

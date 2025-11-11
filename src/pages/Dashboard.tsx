@@ -61,6 +61,7 @@ const tools = [{
   type: 'production' as const,
   color: 'production',
   gradient: 'var(--gradient-production)',
+  comingSoon: true,
   aiFeature: 'Smart scheduling & capacity optimization'
 }];
 const Dashboard = () => {
