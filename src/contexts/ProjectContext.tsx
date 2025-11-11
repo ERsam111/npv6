@@ -7,7 +7,7 @@ export interface Project {
   user_id: string;
   name: string;
   description: string | null;
-  tool_type: 'gfa' | 'forecasting' | 'network' | 'inventory' | 'transportation';
+  tool_type: 'gfa' | 'forecasting' | 'network' | 'inventory' | 'transportation' | 'production';
   input_data: any;
   results_data: any;
   size_mb: number;

@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  toolType: 'gfa' | 'forecasting' | 'network' | 'inventory' | 'transportation';
+  toolType: 'gfa' | 'forecasting' | 'network' | 'inventory' | 'transportation' | 'production';
   toolName: string;
   redirectTo: string;
 }
@@ -70,6 +70,12 @@ export function CreateProjectDialog({
           gradient: 'from-transportation via-transportation/80 to-transportation/60',
           text: 'text-transportation',
           button: 'bg-transportation hover:bg-transportation/90',
+        };
+      case 'production':
+        return {
+          gradient: 'from-production via-production/80 to-production/60',
+          text: 'text-production',
+          button: 'bg-production hover:bg-production/90',
         };
       default:
         return {

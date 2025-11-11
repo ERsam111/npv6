@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, TrendingUp, Network, Gauge, Plus, Truck, BookOpen, Sparkles, Bot, Brain } from 'lucide-react';
+import { MapPin, TrendingUp, Network, Gauge, Plus, Truck, BookOpen, Sparkles, Bot, Brain, Calendar } from 'lucide-react';
 import { useProjects } from '@/contexts/ProjectContext';
 import { useState } from 'react';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
@@ -53,6 +53,15 @@ const tools = [{
   gradient: 'var(--gradient-transport)',
   comingSoon: true,
   aiFeature: 'Intelligent routing'
+}, {
+  icon: Calendar,
+  title: 'Production Planning',
+  description: 'Capacity & Scheduling',
+  route: '/production-planning',
+  type: 'production' as const,
+  color: 'production',
+  gradient: 'var(--gradient-production)',
+  aiFeature: 'Smart scheduling & capacity optimization'
 }];
 const Dashboard = () => {
   const navigate = useNavigate();

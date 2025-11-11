@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { MapPin, TrendingUp, Network, Gauge, ArrowRight, CheckCircle2, BarChart3, Zap, Clock, Truck, Target, Users, Shield, Lightbulb, Mail, Linkedin, Twitter, Github, Quote, Sparkles, Brain, MessageSquare } from "lucide-react";
+import { MapPin, TrendingUp, Network, Gauge, ArrowRight, CheckCircle2, BarChart3, Zap, Clock, Truck, Target, Users, Shield, Lightbulb, Mail, Linkedin, Twitter, Github, Quote, Sparkles, Brain, MessageSquare, Calendar } from "lucide-react";
 const Index = () => {
   const navigate = useNavigate();
   const features = [{
@@ -47,6 +47,14 @@ const Index = () => {
     color: "secondary",
     comingSoon: true,
     aiFeature: "Intelligent route planning"
+  }, {
+    icon: Calendar,
+    title: "Production Planning",
+    description: "Capacity & Scheduling",
+    details: "Optimize production schedules, capacity planning, and resource allocation with intelligent scheduling algorithms",
+    route: "/production-planning",
+    color: "accent",
+    aiFeature: "Smart scheduling & capacity optimization"
   }];
   const benefits = ["Multi-echelon optimization", "Real-time insights", "Interactive assistant", "Smart decision support"];
   return <div className="min-h-screen bg-background">
@@ -152,7 +160,7 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
             <div className="space-y-2">
               <BarChart3 className="h-8 w-8 mx-auto text-primary mb-3" />
-              <div className="text-4xl font-bold text-primary">5</div>
+              <div className="text-4xl font-bold text-primary">6</div>
               <div className="text-sm text-muted-foreground">Optimization Modules</div>
             </div>
             <div className="space-y-2">

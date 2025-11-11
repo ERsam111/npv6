@@ -77,6 +77,10 @@ export default {
           DEFAULT: "hsl(var(--transport-indigo))",
           light: "hsl(var(--transport-indigo-light))",
         },
+        production: {
+          DEFAULT: "hsl(var(--production-teal))",
+          light: "hsl(var(--production-teal-light))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
