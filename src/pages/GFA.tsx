@@ -239,6 +239,26 @@ const GFA = () => {
     }
   };
 
+  const handleProductsUpload = (newProducts: Product[], mode: "append" | "overwrite") => {
+    if (mode === "overwrite") {
+      setProducts(newProducts);
+    } else {
+      setProducts([...products, ...newProducts]);
+    }
+  };
+
+  const handleExistingSitesUpload = (newSites: ExistingSite[], mode: "append" | "overwrite") => {
+    if (mode === "overwrite") {
+      setExistingSites(newSites);
+    } else {
+      setExistingSites([...existingSites, ...newSites]);
+    }
+  };
+
+  const handleCostParametersUpload = (newSettings: Partial<OptimizationSettings>) => {
+    setSettings(prev => ({ ...prev, ...newSettings }));
+  };
+
   const handleExportCurrentData = () => {
     if (customers.length === 0) {
       toast.error("No data to export");
@@ -407,8 +427,13 @@ const GFA = () => {
                         <p className="text-xs text-muted-foreground truncate">Import Excel file to populate customer table</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <ExcelUploadCompact onBulkUpload={handleBulkUpload} />
-                        <Button 
+                        <ExcelUploadCompact 
+                          onBulkUpload={handleBulkUpload}
+                          onProductsUpload={handleProductsUpload}
+                          onExistingSitesUpload={handleExistingSitesUpload}
+                          onCostParametersUpload={handleCostParametersUpload}
+                        />
+                        <Button
                           onClick={handleExportCurrentData} 
                           variant="outline" 
                           size="sm"
