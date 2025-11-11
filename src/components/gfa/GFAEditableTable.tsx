@@ -21,7 +21,7 @@ const getTableTitle = (type: string) => ({
 })[type] || type;
 const getTableColumns = (tableType: string): string[] => {
   const map: Record<string, string[]> = {
-    customers: ["Customer Name", "City", "Region", "Country", "Latitude", "Longitude", "Included"],
+    customers: ["Customer Name", "City", "Country", "Latitude", "Longitude", "Product", "Demand", "Unit of Measure"],
     products: ["Product Name", "Base Unit", "Selling Price", "to_m3", "to_ft3", "to_kg", "to_tonnes", "to_lbs", "to_liters", "to_pallets", "to_units", "to_sq2", "to_cbm"],
     "existing-sites": ["Site Name", "City", "Country", "Latitude", "Longitude", "Capacity", "Capacity Unit"]
   };
@@ -34,11 +34,12 @@ const keyOf = (label: string, tableType: string) => {
     const customerKeyMap: Record<string, string> = {
       "Customer Name": "name",
       "City": "city",
-      "Region": "region",
       "Country": "country",
       "Latitude": "latitude",
       "Longitude": "longitude",
-      "Included": "included"
+      "Product": "product",
+      "Demand": "demand",
+      "Unit of Measure": "unitOfMeasure"
     };
     return customerKeyMap[label] || label.toLowerCase().replace(/[\s]+/g, "_");
   } else if (tableType === "products") {
@@ -87,15 +88,12 @@ export function GFAEditableTable({
       newRow.id = `customer-${Date.now()}`;
       newRow.name = "";
       newRow.city = "";
-      newRow.region = "";
       newRow.country = "";
       newRow.latitude = 0;
       newRow.longitude = 0;
       newRow.product = "";
       newRow.demand = 0;
       newRow.unitOfMeasure = "m3";
-      newRow.conversionFactor = 1;
-      newRow.included = true;
     } else if (tableType === "existing-sites") {
       newRow.id = `site-${Date.now()}`;
       newRow.name = "";
@@ -337,18 +335,6 @@ export function GFAEditableTable({
                               </SelectContent>
                             </Select>
                           </TableCell>;
-              }
-
-              // Special handling for included checkbox in customers
-              if (tableType === "customers" && key === "included") {
-                return <TableCell key={col}>
-                  <input 
-                    type="checkbox" 
-                    checked={val !== false} 
-                    onChange={(e) => handleChange(i, col, e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                </TableCell>;
               }
 
               // Regular input fields

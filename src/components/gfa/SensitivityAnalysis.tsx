@@ -34,7 +34,7 @@ export function SensitivityAnalysis({
     const facilityCosts = [0, 500000, 1000000, 2000000];
     const results: SensitivityResult[] = [];
     for (const facilityCost of facilityCosts) {
-      const result = optimizeWithCost(customers as any, settings.transportationCostPerMilePerUnit, facilityCost, settings.distanceUnit, settings.costUnit, products, settings.includeExistingSites ? existingSites : undefined, settings.includeExistingSites ? settings.existingSitesMode : undefined);
+      const result = optimizeWithCost(customers, settings.transportationCostPerMilePerUnit, facilityCost, settings.distanceUnit, settings.costUnit, products, settings.includeExistingSites ? existingSites : undefined, settings.includeExistingSites ? settings.existingSitesMode : undefined);
       if (result.costBreakdown) {
         results.push({
           facilityCost,
@@ -54,7 +54,7 @@ export function SensitivityAnalysis({
     const transportationRates = [0.25, 0.5, 1.0, 2.0];
     const results: SensitivityResult[] = [];
     for (const rate of transportationRates) {
-      const result = optimizeWithCost(customers as any, rate, settings.facilityCost, settings.distanceUnit, settings.costUnit, products, settings.includeExistingSites ? existingSites : undefined, settings.includeExistingSites ? settings.existingSitesMode : undefined);
+      const result = optimizeWithCost(customers, rate, settings.facilityCost, settings.distanceUnit, settings.costUnit, products, settings.includeExistingSites ? existingSites : undefined, settings.includeExistingSites ? settings.existingSitesMode : undefined);
       if (result.costBreakdown) {
         results.push({
           facilityCost: settings.facilityCost,

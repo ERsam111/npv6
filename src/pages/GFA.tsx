@@ -5,13 +5,12 @@ import * as XLSX from "xlsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Customer, DistributionCenter, OptimizationSettings, Product, ExistingSite, Demand } from "@/types/gfa";
+import { Customer, DistributionCenter, OptimizationSettings, Product, ExistingSite } from "@/types/gfa";
 import { optimizeWithConstraints } from "@/utils/geoCalculations";
 import { exportReport } from "@/utils/exportReport";
 import { toast } from "sonner";
 import { GFASidebarNav } from "@/components/gfa/GFASidebarNav";
 import { GFAEditableTable } from "@/components/gfa/GFAEditableTable";
-import { DemandTable } from "@/components/gfa/DemandTable";
 import { GFACostParametersPanel } from "@/components/gfa/GFACostParametersPanel";
 import { GFAMapPanel } from "@/components/gfa/GFAMapPanel";
 import { GFAOptimizationPanel } from "@/components/gfa/GFAOptimizationPanel";
@@ -57,7 +56,6 @@ const GFA = () => {
   }, [location.state, projects]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [demands, setDemands] = useState<Demand[]>([]);
   const [existingSites, setExistingSites] = useState<ExistingSite[]>([]);
   const [dcs, setDcs] = useState<DistributionCenter[]>([]);
   const [feasible, setFeasible] = useState(true);
@@ -92,14 +90,12 @@ const GFA = () => {
         if (inputData) {
           setCustomers(inputData.customers || []);
           setProducts(inputData.products || []);
-          setDemands(inputData.demands || []);
           setExistingSites(inputData.existingSites || []);
           setSettings(inputData.settings || settings);
         } else {
           // Clear all data for new/blank scenario
           setCustomers([]);
           setProducts([]);
-          setDemands([]);
           setExistingSites([]);
           setSettings({
             mode: 'sites',
@@ -141,41 +137,45 @@ const GFA = () => {
 
   // Save input data whenever it changes
   useEffect(() => {
-    if (currentScenario && (customers.length > 0 || products.length > 0 || demands.length > 0 || existingSites.length > 0)) {
+    if (currentScenario && (customers.length > 0 || products.length > 0 || existingSites.length > 0)) {
       const saveData = async () => {
         await saveScenarioInput(currentScenario.id, {
           customers,
           products,
-          demands,
           existingSites,
           settings
         }, true); // Background save, non-blocking
       };
       saveData();
     }
-  }, [customers, products, demands, existingSites, settings, currentScenario?.id]);
+  }, [customers, products, existingSites, settings, currentScenario?.id]);
 
-  // Helper function to merge customers with demands for optimization
-  const getCustomersWithDemand = () => {
-    return demands.map(demand => {
-      const customer = customers.find(c => c.id === demand.customerId);
-      if (!customer) return null;
-      
-      return {
-        ...customer,
-        product: demand.product,
-        demand: demand.quantity,
-        unitOfMeasure: demand.unitOfMeasure,
-        conversionFactor: demand.conversionFactor,
-      };
-    }).filter(c => c !== null);
-  };
-
+  // Extract unique products from customers - auto-populate
+  useEffect(() => {
+    if (customers.length === 0) {
+      setProducts([]);
+      return;
+    }
+    setProducts(prevProducts => {
+      const productMap = new Map<string, Product>();
+      customers.forEach(customer => {
+        const productName = customer.product;
+        if (productName && !productMap.has(productName)) {
+          const existingProduct = prevProducts.find(p => p.name === productName);
+          productMap.set(productName, {
+            name: productName,
+            baseUnit: customer.unitOfMeasure || "",
+            unitConversions: existingProduct?.unitConversions || {},
+            sellingPrice: existingProduct?.sellingPrice
+          });
+        }
+      });
+      return Array.from(productMap.values());
+    });
+  }, [customers]);
   const handleOptimize = async () => {
-    const customersWithDemand = getCustomersWithDemand();
-    
-    if (customersWithDemand.length === 0) {
-      toast.error("Add customer demand data before optimizing");
+    if (customers.length === 0) {
+      toast.error("Add at least one customer before optimizing");
       return;
     }
     if (!currentScenario) {
@@ -189,7 +189,7 @@ const GFA = () => {
       status: 'running'
     });
     const result = optimizeWithConstraints(
-      customersWithDemand as any,
+      customers, 
       settings.numDCs, 
       {
         maxRadius: settings.maxRadius,
@@ -430,8 +430,7 @@ const GFA = () => {
               <GFASidebarNav 
                 activeTable={activeTable} 
                 onTableSelect={setActiveTable} 
-                customerCount={customers.length}
-                demandCount={demands.length}
+                customerCount={customers.length} 
                 productCount={products.length}
                 existingSiteCount={existingSites.length}
               />
@@ -469,28 +468,6 @@ const GFA = () => {
                 {/* Active Table Content with horizontal scroll */}
                 <div className="flex-1 min-w-0 overflow-hidden">
                   {activeTable === "customers" && <GFAEditableTable tableType="customers" data={customers} onDataChange={setCustomers} onGeocode={handleGeocodeCustomer} />}
-                  {activeTable === "demand" && (
-                    <DemandTable
-                      demands={demands}
-                      customers={customers}
-                      products={products}
-                      onAddDemand={(demand) => {
-                        setDemands([...demands, demand]);
-                        toast.success("Demand added successfully");
-                      }}
-                      onRemoveDemand={(id) => {
-                        const updatedDemands = demands.filter(d => d.id !== id);
-                        setDemands(updatedDemands);
-                        toast.success("Demand removed");
-                      }}
-                      onUpdateDemand={(id, updates) => {
-                        const updatedDemands = demands.map(d => 
-                          d.id === id ? { ...d, ...updates } : d
-                        );
-                        setDemands(updatedDemands);
-                      }}
-                    />
-                  )}
                   {activeTable === "products" && <GFAEditableTable tableType="products" data={products} onDataChange={setProducts} />}
                   {activeTable === "existing-sites" && <GFAEditableTable tableType="existing-sites" data={existingSites} onDataChange={setExistingSites} />}
                   {activeTable === "costs" && <GFACostParametersPanel settings={settings} onSettingsChange={setSettings} />}

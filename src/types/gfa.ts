@@ -16,38 +16,15 @@ export interface Product {
 
 export interface Customer {
   id: string;
-  name: string;
-  city: string;
-  region?: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-  included?: boolean;
-  // Legacy fields for backward compatibility - will be removed in future
-  product?: string;
-  demand?: number;
-  unitOfMeasure?: string;
-  conversionFactor?: number;
-}
-
-export interface Demand {
-  id: string;
-  customerId: string;
-  customerName: string;
   product: string;
-  quantity: number;
-  unitOfMeasure: string;
-  conversionFactor: number;
-}
-
-export interface CustomerLocation {
-  id: string;
   name: string;
   city: string;
   country: string;
   latitude: number;
   longitude: number;
-  included: boolean;
+  demand: number;
+  unitOfMeasure: string; // e.g., "pallets", "m3", "tonnes", "sq2"
+  conversionFactor: number; // conversion to standard unit (m3)
 }
 
 export interface ExistingSite {
