@@ -9,7 +9,7 @@ import { DemandInsights } from "./DemandInsights";
 import { KPISummaryDashboard } from "./KPISummaryDashboard";
 import { ScenarioComparison } from "./ScenarioComparison";
 import { SensitivityAnalysis } from "./SensitivityAnalysis";
-import { CustomerMapView } from "./CustomerMapView";
+import { MapView } from "./MapView";
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -92,8 +92,15 @@ export function GFAResultsPanel({
             </CardTitle>
             <CardDescription>Visual representation of site-customer connections</CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
-            <CustomerMapView customers={customers} />
+          <CardContent className="p-4">
+            <div className="h-[550px] w-full">
+              <MapView
+                customers={customers}
+                dcs={dcs}
+                distanceRangeStep={distanceRangeStep}
+                distanceUnit={settings.distanceUnit}
+              />
+            </div>
           </CardContent>
         </Card>
 
